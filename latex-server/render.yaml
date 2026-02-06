@@ -1,0 +1,18 @@
+# Render.com Blueprint Configuration
+# This file configures the automatic deployment on Render.com
+
+services:
+  - type: web
+    name: latex-compilation-server
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon # or choose your preferred region
+    plan: starter # starter plan for $7/month, supports Docker
+    envVars:
+      - key: API_KEY
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        sync: false # Set this manually to your Vercel domain
+    healthCheckPath: /health

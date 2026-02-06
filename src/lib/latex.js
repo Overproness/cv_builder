@@ -205,9 +205,19 @@ function generateProjects(projects) {
 `;
 
   for (const proj of projects) {
+    // Fixed formatting: technologies on separate line to prevent overflow
     section += `      \\resumeProjectHeading
-          {\\textbf{${escapeLatex(proj.name || '')}} $|$ \\emph{${escapeLatex(proj.technologies || '')}}}{${escapeLatex(proj.dates || '')}}
-          \\resumeItemListStart
+          {\\textbf{${escapeLatex(proj.name || '')}}}{${escapeLatex(proj.dates || '')}}
+`;
+    
+    // Add technologies as a separate line if present
+    if (proj.technologies && proj.technologies.trim()) {
+      section += `          \\vspace{-7pt}
+          \\small{\\emph{${escapeLatex(proj.technologies)}}}
+`;
+    }
+    
+    section += `          \\resumeItemListStart
 `;
     
     for (const point of (proj.points || [])) {

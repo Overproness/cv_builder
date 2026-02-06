@@ -1,22 +1,27 @@
 'use client';
 
 import { Footer } from '@/components/Footer';
+import { useLatexCompiler } from '@/components/LatexCompiler';
 import { Navbar } from '@/components/Navbar';
+import PdfPreview from '@/components/PdfPreview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Editor from '@monaco-editor/react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
-    LuArrowRight,
-    LuBriefcase,
-    LuCheck,
-    LuCopy, LuDownload,
-    LuExternalLink,
-    LuFileOutput,
-    LuFileQuestion,
-    LuLoader,
-    LuSparkles
+  LuArrowRight,
+  LuBriefcase,
+  LuCheck,
+  LuCopy,
+  LuDownload,
+  LuExternalLink,
+  LuEye,
+  LuFileOutput,
+  LuFileQuestion,
+  LuFileText,
+  LuLoader,
+  LuSparkles
 } from 'react-icons/lu';
 
 export default function TailorPage() {
@@ -27,6 +32,22 @@ export default function TailorPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [message, setMessage] = useState(null);
   const [copied, setCopied] = useState(false);
+  
+  // PDF compilation state
+  const [pdfBlob, setPdfBlob] = useState(null);
+  const [isCompiling, setIsCompiling] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  
+  // LaTeX compiler hook
+  const { 
+    compileLatex, 
+    compileLatexOnServer,
+    isLoading: engineLoading, 
+    isEngineReady, 
+    engineNotAvailable,
+    loadingProgress, 
+    error: engineError 
+  } = useLatexCompiler();
 
   useEffect(() => {
     checkMasterCV();
@@ -55,6 +76,9 @@ export default function TailorPage() {
     }
 
     setLoading(true);
+    setPdfBlob(null); // Clear previous PDF
+    setShowPdfPreview(false);
+    
     try {
       const res = await fetch('/api/resume/tailor', {
         method: 'POST',
@@ -101,6 +125,90 @@ export default function TailorPage() {
     document.body.removeChild(element);
   };
 
+  const openInOverleaf = () => {
+    if (!tailoredLatex) return;
+    
+    // Overleaf's API for opening documents
+    const overleafUrl = 'https://www.overleaf.com/docs';
+    const encodedLatex = encodeURIComponent(tailoredLatex);
+    
+    // Create a form to submit to Overleaf
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = overleafUrl;
+    form.target = '_blank';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'snip';
+    input.value = tailoredLatex;
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'hidden';
+    nameInput.name = 'snip_name';
+    nameInput.value = 'resume.tex';
+    
+    form.appendChild(input);
+    form.appendChild(nameInput);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    
+    showMessage('Opening in Overleaf...', 'success');
+  };
+
+  const compilePdf = async () => {
+    if (!tailoredLatex) return;
+    
+    setIsCompiling(true);
+    try {
+      let pdfResult;
+      
+      // Try browser-based compilation first if engine is ready
+      if (isEngineReady && !engineNotAvailable) {
+        const result = await compileLatex(tailoredLatex);
+        
+        if (result.success && result.pdf) {
+          pdfResult = result.pdf;
+        } else {
+          showMessage('Browser compilation failed. Trying server...', 'info');
+          // Fall back to server
+          pdfResult = await compileLatexOnServer(tailoredLatex);
+        }
+      } else {
+        // Use server-side compilation
+        showMessage('Using server-side compilation...', 'info');
+        pdfResult = await compileLatexOnServer(tailoredLatex);
+      }
+      
+      if (pdfResult) {
+        setPdfBlob(pdfResult);
+        setShowPdfPreview(true);
+        showMessage('PDF compiled successfully!', 'success');
+      } else {
+        showMessage('PDF compilation failed.', 'error');
+      }
+    } catch (err) {
+      showMessage(`Compilation error: ${err.message}`, 'error');
+      console.error('Compilation error:', err);
+    } finally {
+      setIsCompiling(false);
+    }
+  };
+
+  const downloadPdf = () => {
+    if (!pdfBlob) return;
+    
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'resume.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const showMessage = (text, type) => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 4000);
@@ -134,6 +242,21 @@ export default function TailorPage() {
         {message && (
           <div className={`toast ${message.type === 'success' ? 'toast-success' : 'toast-error'} flex items-center gap-2`}>
             {message.text}
+          </div>
+        )}
+
+        {/* PDF Preview Modal */}
+        {showPdfPreview && pdfBlob && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-card rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+              <PdfPreview 
+                pdfBlob={pdfBlob} 
+                latexSource={tailoredLatex}
+                fileName="tailored_resume.pdf"
+                onClose={() => setShowPdfPreview(false)}
+                className="h-full"
+              />
+            </div>
           </div>
         )}
 
@@ -233,6 +356,14 @@ Key Responsibilities:
                         <Button 
                           variant="outline"
                           size="sm"
+                          onClick={openInOverleaf}
+                          title="Open in Overleaf"
+                        >
+                          <LuExternalLink className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          size="sm"
                           onClick={copyToClipboard}
                           title="Copy to Clipboard"
                         >
@@ -277,29 +408,84 @@ Key Responsibilities:
                       </div>
                     )}
 
-                    <div className="mt-4 p-4 rounded-lg bg-accent/50 border border-accent">
-                      <h3 className="font-semibold mb-2 flex items-center gap-2 text-foreground">
-                        <LuExternalLink className="h-4 w-4" /> Compile Online
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        To generate the PDF, copy the code above and paste it into Overleaf.
-                      </p>
-                      <a 
-                        href="https://www.overleaf.com/project" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-primary hover:underline flex items-center gap-1"
-                        onClick={(e) => {
-                          if (tailoredLatex) {
-                            e.preventDefault();
-                            copyToClipboard();
-                            window.open('https://www.overleaf.com/project', '_blank');
-                          }
-                        }}
-                      >
-                        Open Overleaf <LuExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
+                    {/* PDF Compilation Section */}
+                    {tailoredLatex && (
+                      <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
+                        <h3 className="font-semibold mb-3 flex items-center gap-2 text-foreground">
+                          <LuFileText className="h-4 w-4" /> Compile to PDF
+                        </h3>
+                        
+                        {/* Engine Status */}
+                        {engineLoading && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                            <LuLoader className="h-4 w-4 animate-spin" />
+                            {loadingProgress || 'Loading LaTeX engine...'}
+                          </div>
+                        )}
+                        
+                        {engineError && (
+                          <div className="text-sm text-amber-600 dark:text-amber-400 mb-3">
+                            {engineError}
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          {/* Compile PDF Button */}
+                          <Button
+                            onClick={compilePdf}
+                            disabled={isCompiling || !tailoredLatex}
+                            size="sm"
+                            className="flex-1 sm:flex-none"
+                          >
+                            {isCompiling ? (
+                              <>
+                                <LuLoader className="animate-spin mr-2 h-4 w-4" />
+                                Compiling...
+                              </>
+                            ) : (
+                              <>
+                                <LuSparkles className="mr-2 h-4 w-4" />
+                                Compile PDF
+                              </>
+                            )}
+                          </Button>
+
+                          {/* Download PDF Button (shown after compilation) */}
+                          {pdfBlob && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={downloadPdf}
+                                title="Download compiled PDF"
+                                className="flex-1 sm:flex-none"
+                              >
+                                <LuDownload className="mr-2 h-4 w-4" />
+                                Download PDF
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowPdfPreview(true)}
+                                title="Preview compiled PDF"
+                                className="flex-1 sm:flex-none"
+                              >
+                                <LuEye className="mr-2 h-4 w-4" />
+                                Preview PDF
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                        
+                        <p className="text-xs text-muted-foreground mt-3">
+                          {isEngineReady && !engineNotAvailable
+                            ? '🚀 Browser-based LaTeX engine ready! Fast compilation in your browser.'
+                            : engineNotAvailable 
+                              ? '☁️ Using server-side compilation. May take a few seconds.'
+                              : '⏳ Loading LaTeX engine... (Server fallback available)'}
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
