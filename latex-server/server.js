@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const morgan = require('morgan');
 const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -16,6 +17,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'X-API-Key']
 }));
 app.use(express.json({ limit: '10mb' }));
+
+// Request logging
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :date[iso]'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
