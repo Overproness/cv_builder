@@ -1,18 +1,26 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
-import { LuCheck, LuCopy, LuDownload, LuExternalLink, LuFileCode, LuMaximize2, LuX } from 'react-icons/lu';
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import {
+  LuCheck,
+  LuCopy,
+  LuDownload,
+  LuExternalLink,
+  LuFileCode,
+  LuMaximize2,
+  LuX,
+} from "react-icons/lu";
 
 /**
  * PDF Preview component - displays compiled PDF and provides download/copy options
  */
-export default function PdfPreview({ 
-  pdfBlob, 
-  latexSource = '',
-  fileName = 'resume.pdf',
+export default function PdfPreview({
+  pdfBlob,
+  latexSource = "",
+  fileName = "resume.pdf",
   onClose,
-  className = '' 
+  className = "",
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -29,9 +37,9 @@ export default function PdfPreview({
 
   const handleDownloadPdf = () => {
     if (!pdfBlob) return;
-    
+
     const url = URL.createObjectURL(pdfBlob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = fileName;
     document.body.appendChild(a);
@@ -42,12 +50,12 @@ export default function PdfPreview({
 
   const handleDownloadLatex = () => {
     if (!latexSource) return;
-    
-    const blob = new Blob([latexSource], { type: 'text/plain' });
+
+    const blob = new Blob([latexSource], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = fileName.replace('.pdf', '.tex');
+    a.download = fileName.replace(".pdf", ".tex");
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -56,35 +64,35 @@ export default function PdfPreview({
 
   const handleCopyLatex = async () => {
     if (!latexSource) return;
-    
+
     try {
       await navigator.clipboard.writeText(latexSource);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
   const handleOpenInOverleaf = () => {
     if (!latexSource) return;
-    
+
     // Create a form to submit to Overleaf
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = 'https://www.overleaf.com/docs';
-    form.target = '_blank';
-    
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'snip';
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "https://www.overleaf.com/docs";
+    form.target = "_blank";
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "snip";
     input.value = latexSource;
-    
-    const nameInput = document.createElement('input');
-    nameInput.type = 'hidden';
-    nameInput.name = 'snip_name';
-    nameInput.value = fileName.replace('.pdf', '.tex');
-    
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "hidden";
+    nameInput.name = "snip_name";
+    nameInput.value = fileName.replace(".pdf", ".tex");
+
     form.appendChild(input);
     form.appendChild(nameInput);
     document.body.appendChild(form);
@@ -101,7 +109,9 @@ export default function PdfPreview({
   }
 
   const previewContent = (
-    <div className={`relative bg-muted rounded-lg overflow-hidden ${className}`}>
+    <div
+      className={`relative bg-muted rounded-lg overflow-hidden ${className}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border bg-card">
         <span className="text-sm font-medium">PDF Preview</span>
@@ -139,7 +149,7 @@ export default function PdfPreview({
               </Button>
             </>
           )}
-          
+
           {/* PDF actions */}
           <Button
             variant="ghost"
@@ -169,7 +179,7 @@ export default function PdfPreview({
           )}
         </div>
       </div>
-      
+
       {/* PDF Embed */}
       <div className={isFullscreen ? "h-[calc(100vh-60px)]" : "h-[500px]"}>
         {pdfUrl ? (
@@ -189,9 +199,7 @@ export default function PdfPreview({
 
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-background">
-        {previewContent}
-      </div>
+      <div className="fixed inset-0 z-50 bg-background">{previewContent}</div>
     );
   }
 
