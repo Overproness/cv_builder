@@ -172,11 +172,17 @@ export default function PdfPreview({
       
       {/* PDF Embed */}
       <div className={isFullscreen ? "h-[calc(100vh-60px)]" : "h-[500px]"}>
-        <iframe
-          src={pdfUrl ? `${pdfUrl}#toolbar=0&navpanes=0` : ''}
-          className="w-full h-full border-0"
-          title="PDF Preview"
-        />
+        {pdfUrl ? (
+          <iframe
+            src={`${pdfUrl}#toolbar=0&navpanes=0`}
+            className="w-full h-full border-0"
+            title="PDF Preview"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+            Loading PDF...
+          </div>
+        )}
       </div>
     </div>
   );

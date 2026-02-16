@@ -224,6 +224,7 @@ ATS KEYWORD OPTIMIZATION:
 2. Incorporate these keywords naturally into bullet points where applicable
 3. Add relevant keywords to the skills section even if not in original CV (if the candidate could reasonably have that skill based on their experience)
 4. Maintain authenticity - don't add false claims, but optimize language to match job requirements
+5. IMPORTANT: Create an "ats_keywords" array containing keywords from the job description that are NOT present anywhere in the tailored resume (not in bullet points, not in skills, not anywhere). These will be added invisibly to the resume for ATS scanning.
 
 BLOCK-BASED SELECTION APPROACH:
 - The Master CV contains ${totalBlocks} total blocks:
@@ -246,14 +247,25 @@ CRITICAL REQUIREMENTS:
 5. Keep personal_info identical to Master CV
 6. Preserve demo_link field for projects if present in Master CV
 7. Tailor skills section to highlight job-relevant skills, adding keywords from job description
-8. Use exact same JSON structure as Master CV
+8. Use exact same JSON structure as Master CV PLUS add "ats_keywords" array
 9. Ensure professional language and quantified achievements
+10. The "ats_keywords" array should contain ONLY keywords/phrases from the job description that are MISSING from the final resume
 
 SELECTION CONSISTENCY RULES:
 - Always select the SAME blocks when given identical input
 - Base selection purely on keyword overlap and skill matches
 - If two blocks have equal scores, prefer the more recent one
 - Never randomly select - use deterministic scoring
+
+OUTPUT JSON STRUCTURE (including new ats_keywords field):
+{
+  "personal_info": { ... },
+  "education": [ ... ],
+  "experience": [ ... ],
+  "projects": [ ... ],
+  "skills": { ... },
+  "ats_keywords": ["keyword1", "keyword2", ...] // Keywords from job description NOT in resume
+}
 
 MASTER CV JSON:
 ${JSON.stringify(masterCV, null, 2)}
@@ -299,6 +311,7 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
         libraries: [],
       };
     if (!parsed.personal_info) parsed.personal_info = masterCV.personal_info;
+    if (!parsed.ats_keywords) parsed.ats_keywords = [];
 
     return parsed;
   } catch (error) {

@@ -227,17 +227,14 @@ function generateProjects(projects) {
       projectName = `\\href{${demoUrl}}{${projectName}}`;
     }
 
+    // Format technologies for right alignment
+    const technologies = proj.technologies && proj.technologies.trim() 
+      ? `\\small{\\emph{${escapeLatex(proj.technologies)}}}`
+      : "";
+
     section += `      \\resumeProjectHeading
-          {\\textbf{${projectName}}}{${escapeLatex(proj.dates || "")}}
-`;
-
-    // Add technologies as a separate line if present (removed vspace)
-    if (proj.technologies && proj.technologies.trim()) {
-      section += `          \\small{\\emph{${escapeLatex(proj.technologies)}}}
-`;
-    }
-
-    section += `          \\resumeItemListStart
+          {\\textbf{${projectName}}}{${technologies}}
+          \\resumeItemListStart
 `;
 
     for (const point of proj.points || []) {
@@ -302,6 +299,14 @@ export function generateLatex(cvData) {
   latex += generateExperience(cvData.experience);
   latex += generateProjects(cvData.projects);
   latex += generateSkills(cvData.skills);
+  
+  // Add hidden ATS keywords at the end (white text, invisible to humans)
+  if (cvData.ats_keywords && cvData.ats_keywords.length > 0) {
+    const keywordsText = cvData.ats_keywords.join(", ");
+    latex += `\n%---ATS KEYWORDS (INVISIBLE)---
+{\\color{white}\\tiny ${escapeLatex(keywordsText)}}\n`;
+  }
+  
   latex += `%-------------------------------------------
 \\end{document}`;
 
