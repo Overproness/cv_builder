@@ -1,23 +1,25 @@
-'use client';
+"use client";
 
-import { Footer } from '@/components/Footer';
-import { Navbar } from '@/components/Navbar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   LuBriefcase,
   LuChevronRight,
   LuFileText,
-  LuGithub, LuGlobe,
+  LuGithub,
+  LuGlobe,
   LuGraduationCap,
   LuLinkedin,
   LuLoader,
-  LuMail, LuPhone,
+  LuMail,
+  LuPhone,
   LuPlus,
   LuRefreshCw,
   LuRocket,
@@ -25,18 +27,18 @@ import {
   LuSparkles,
   LuTrash2,
   LuUser,
-  LuWrench
-} from 'react-icons/lu';
+  LuWrench,
+} from "react-icons/lu";
 
 // Empty CV template
 const emptyCVTemplate = {
   personal_info: {
-    name: '',
-    phone: '',
-    email: '',
-    linkedin: '',
-    github: '',
-    website: ''
+    name: "",
+    phone: "",
+    email: "",
+    linkedin: "",
+    github: "",
+    website: "",
   },
   education: [],
   experience: [],
@@ -45,15 +47,15 @@ const emptyCVTemplate = {
     languages: [],
     frameworks: [],
     tools: [],
-    libraries: []
-  }
+    libraries: [],
+  },
 };
 
 export default function CVPage() {
-  const [mode, setMode] = useState('raw'); // 'raw', 'structured', or 'add'
-  const [rawText, setRawText] = useState('');
-  const [addContent, setAddContent] = useState('');
-  const [addType, setAddType] = useState('auto'); // 'auto', 'experience', 'project'
+  const [mode, setMode] = useState("raw"); // 'raw', 'structured', or 'add'
+  const [rawText, setRawText] = useState("");
+  const [addContent, setAddContent] = useState("");
+  const [addType, setAddType] = useState("auto"); // 'auto', 'experience', 'project'
   const [cv, setCV] = useState(emptyCVTemplate);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,45 +69,45 @@ export default function CVPage() {
 
   const fetchCV = async () => {
     try {
-      const res = await fetch('/api/cv');
+      const res = await fetch("/api/cv");
       if (res.ok) {
         const data = await res.json();
         if (data && data.personal_info) {
           setCV(data);
           setCvId(data._id);
-          setMode('structured');
+          setMode("structured");
         }
       }
     } catch (error) {
-      console.error('Error fetching CV:', error);
+      console.error("Error fetching CV:", error);
     }
   };
 
   const parseWithAI = async () => {
     if (!rawText.trim()) {
-      showMessage('Please enter some text to parse', 'error');
+      showMessage("Please enter some text to parse", "error");
       return;
     }
-    
+
     setLoading(true);
     try {
-      const res = await fetch('/api/cv/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText })
+      const res = await fetch("/api/cv/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rawText }),
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok && data.cv) {
         setCV(data.cv);
-        setMode('structured');
-        showMessage('CV parsed successfully!', 'success');
+        setMode("structured");
+        showMessage("CV parsed successfully!", "success");
       } else {
-        showMessage(data.error || 'Failed to parse CV', 'error');
+        showMessage(data.error || "Failed to parse CV", "error");
       }
     } catch (error) {
-      showMessage('Failed to parse CV. Please try again.', 'error');
+      showMessage("Failed to parse CV. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -113,39 +115,39 @@ export default function CVPage() {
 
   const addToExistingCV = async () => {
     if (!addContent.trim()) {
-      showMessage('Please enter content to add', 'error');
+      showMessage("Please enter content to add", "error");
       return;
     }
-    
+
     if (!cv.personal_info?.name) {
-      showMessage('Please create or load a CV first', 'error');
+      showMessage("Please create or load a CV first", "error");
       return;
     }
-    
+
     setLoading(true);
     try {
-      const res = await fetch('/api/resume/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          existingCV: cv, 
+      const res = await fetch("/api/resume/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          existingCV: cv,
           newContent: addContent,
-          contentType: addType
-        })
+          contentType: addType,
+        }),
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok && data.updatedCV) {
         setCV(data.updatedCV);
-        setAddContent('');
-        setMode('structured');
-        showMessage('Content added successfully!', 'success');
+        setAddContent("");
+        setMode("structured");
+        showMessage("Content added successfully!", "success");
       } else {
-        showMessage(data.error || 'Failed to add content', 'error');
+        showMessage(data.error || "Failed to add content", "error");
       }
     } catch (error) {
-      showMessage('Failed to add content. Please try again.', 'error');
+      showMessage("Failed to add content. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -154,22 +156,22 @@ export default function CVPage() {
   const saveCV = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/cv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...cv, _id: cvId })
+      const res = await fetch("/api/cv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...cv, _id: cvId }),
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok) {
         if (data.id) setCvId(data.id);
-        showMessage('CV saved successfully!', 'success');
+        showMessage("CV saved successfully!", "success");
       } else {
-        showMessage(data.error || 'Failed to save CV', 'error');
+        showMessage(data.error || "Failed to save CV", "error");
       }
     } catch (error) {
-      showMessage('Failed to save CV. Please try again.', 'error');
+      showMessage("Failed to save CV. Please try again.", "error");
     } finally {
       setSaving(false);
     }
@@ -181,155 +183,173 @@ export default function CVPage() {
   };
 
   const updatePersonalInfo = (field, value) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      personal_info: { ...prev.personal_info, [field]: value }
+      personal_info: { ...prev.personal_info, [field]: value },
     }));
   };
 
   const addEducation = () => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      education: [...prev.education, { institution: '', location: '', degree: '', dates: '' }]
+      education: [
+        ...prev.education,
+        { institution: "", location: "", degree: "", dates: "" },
+      ],
     }));
   };
 
   const updateEducation = (index, field, value) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      education: prev.education.map((edu, i) => 
-        i === index ? { ...edu, [field]: value } : edu
-      )
+      education: prev.education.map((edu, i) =>
+        i === index ? { ...edu, [field]: value } : edu,
+      ),
     }));
   };
 
   const removeEducation = (index) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      education: prev.education.filter((_, i) => i !== index)
+      education: prev.education.filter((_, i) => i !== index),
     }));
   };
 
   const addExperience = () => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      experience: [...prev.experience, { role: '', company: '', location: '', dates: '', points: [''] }]
+      experience: [
+        ...prev.experience,
+        { role: "", company: "", location: "", dates: "", points: [""] },
+      ],
     }));
   };
 
   const updateExperience = (index, field, value) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      experience: prev.experience.map((exp, i) => 
-        i === index ? { ...exp, [field]: value } : exp
-      )
+      experience: prev.experience.map((exp, i) =>
+        i === index ? { ...exp, [field]: value } : exp,
+      ),
     }));
   };
 
   const updateExperiencePoint = (expIndex, pointIndex, value) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      experience: prev.experience.map((exp, i) => 
-        i === expIndex 
-          ? { ...exp, points: exp.points.map((p, j) => j === pointIndex ? value : p) }
-          : exp
-      )
+      experience: prev.experience.map((exp, i) =>
+        i === expIndex
+          ? {
+              ...exp,
+              points: exp.points.map((p, j) => (j === pointIndex ? value : p)),
+            }
+          : exp,
+      ),
     }));
   };
 
   const addExperiencePoint = (expIndex) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      experience: prev.experience.map((exp, i) => 
-        i === expIndex ? { ...exp, points: [...exp.points, ''] } : exp
-      )
+      experience: prev.experience.map((exp, i) =>
+        i === expIndex ? { ...exp, points: [...exp.points, ""] } : exp,
+      ),
     }));
   };
 
   const removeExperiencePoint = (expIndex, pointIndex) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      experience: prev.experience.map((exp, i) => 
-        i === expIndex 
+      experience: prev.experience.map((exp, i) =>
+        i === expIndex
           ? { ...exp, points: exp.points.filter((_, j) => j !== pointIndex) }
-          : exp
-      )
+          : exp,
+      ),
     }));
   };
 
   const removeExperience = (index) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      experience: prev.experience.filter((_, i) => i !== index)
+      experience: prev.experience.filter((_, i) => i !== index),
     }));
   };
 
   const addProject = () => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      projects: [...prev.projects, { name: '', technologies: '', dates: '', demo_link: '', points: [''] }]
+      projects: [
+        ...prev.projects,
+        { name: "", technologies: "", dates: "", demo_link: "", points: [""] },
+      ],
     }));
   };
 
   const updateProject = (index, field, value) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      projects: prev.projects.map((proj, i) => 
-        i === index ? { ...proj, [field]: value } : proj
-      )
+      projects: prev.projects.map((proj, i) =>
+        i === index ? { ...proj, [field]: value } : proj,
+      ),
     }));
   };
 
   const updateProjectPoint = (projIndex, pointIndex, value) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      projects: prev.projects.map((proj, i) => 
-        i === projIndex 
-          ? { ...proj, points: proj.points.map((p, j) => j === pointIndex ? value : p) }
-          : proj
-      )
+      projects: prev.projects.map((proj, i) =>
+        i === projIndex
+          ? {
+              ...proj,
+              points: proj.points.map((p, j) => (j === pointIndex ? value : p)),
+            }
+          : proj,
+      ),
     }));
   };
 
   const addProjectPoint = (projIndex) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      projects: prev.projects.map((proj, i) => 
-        i === projIndex ? { ...proj, points: [...proj.points, ''] } : proj
-      )
+      projects: prev.projects.map((proj, i) =>
+        i === projIndex ? { ...proj, points: [...proj.points, ""] } : proj,
+      ),
     }));
   };
 
   const removeProjectPoint = (projIndex, pointIndex) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      projects: prev.projects.map((proj, i) => 
-        i === projIndex 
+      projects: prev.projects.map((proj, i) =>
+        i === projIndex
           ? { ...proj, points: proj.points.filter((_, j) => j !== pointIndex) }
-          : proj
-      )
+          : proj,
+      ),
     }));
   };
 
   const removeProject = (index) => {
-    setCV(prev => ({
+    setCV((prev) => ({
       ...prev,
-      projects: prev.projects.filter((_, i) => i !== index)
+      projects: prev.projects.filter((_, i) => i !== index),
     }));
   };
 
   const updateSkills = (category, value) => {
-    const skills = value.split(',').map(s => s.trim()).filter(s => s);
-    setCV(prev => ({
+    const skills = value
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s);
+    setCV((prev) => ({
       ...prev,
-      skills: { ...prev.skills, [category]: skills }
+      skills: { ...prev.skills, [category]: skills },
     }));
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
+
       <main className="flex-1 relative">
         {/* Background Elements */}
         <div className="hero-pattern"></div>
@@ -338,7 +358,9 @@ export default function CVPage() {
 
         {/* Toast Message */}
         {message && (
-          <div className={`toast ${message.type === 'success' ? 'toast-success' : 'toast-error'} flex items-center gap-2`}>
+          <div
+            className={`toast ${message.type === "success" ? "toast-success" : "toast-error"} flex items-center gap-2`}
+          >
             {message.text}
           </div>
         )}
@@ -357,33 +379,28 @@ export default function CVPage() {
                 Your complete professional history
               </p>
             </div>
-            
-            {mode === 'structured' && (
+
+            {mode === "structured" && (
               <div className="flex gap-3">
-                <Button 
-                  variant="outline"
-                  onClick={() => setMode('add')}
-                >
+                <Button variant="outline" onClick={() => setMode("add")}>
                   <LuPlus className="mr-2 h-4 w-4" /> Add to CV
                 </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => setMode('raw')}
-                >
+                <Button variant="outline" onClick={() => setMode("raw")}>
                   <LuRefreshCw className="mr-2 h-4 w-4" /> Parse New
                 </Button>
-                <Button 
-                  onClick={saveCV} 
-                  disabled={saving}
-                >
-                  {saving ? <LuLoader className="animate-spin mr-2 h-4 w-4" /> : <LuSave className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : 'Save CV'}
+                <Button onClick={saveCV} disabled={saving}>
+                  {saving ? (
+                    <LuLoader className="animate-spin mr-2 h-4 w-4" />
+                  ) : (
+                    <LuSave className="mr-2 h-4 w-4" />
+                  )}
+                  {saving ? "Saving..." : "Save CV"}
                 </Button>
               </div>
             )}
           </div>
 
-          {mode === 'add' ? (
+          {mode === "add" ? (
             /* Add to Existing CV Mode */
             <Card className="animate-[fade-in-up_0.5s_ease-out_forwards]">
               <CardHeader>
@@ -394,36 +411,37 @@ export default function CVPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <p className="text-muted-foreground">
-                  Describe a new job, internship, or project you've completed. AI will parse it and add it to your CV.
+                  Describe a new job, internship, or project you've completed.
+                  AI will parse it and add it to your CV.
                 </p>
-                
+
                 <div className="space-y-2">
                   <Label>What are you adding?</Label>
                   <div className="flex gap-2">
-                    <Button 
-                      variant={addType === 'auto' ? 'default' : 'outline'}
-                      size="sm" 
-                      onClick={() => setAddType('auto')}
+                    <Button
+                      variant={addType === "auto" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAddType("auto")}
                     >
                       Auto-detect
                     </Button>
-                    <Button 
-                      variant={addType === 'experience' ? 'default' : 'outline'}
-                      size="sm" 
-                      onClick={() => setAddType('experience')}
+                    <Button
+                      variant={addType === "experience" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAddType("experience")}
                     >
                       Experience
                     </Button>
-                    <Button 
-                      variant={addType === 'project' ? 'default' : 'outline'}
-                      size="sm" 
-                      onClick={() => setAddType('project')}
+                    <Button
+                      variant={addType === "project" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAddType("project")}
                     >
                       Project
                     </Button>
                   </div>
                 </div>
-                
+
                 <textarea
                   value={addContent}
                   onChange={(e) => setAddContent(e.target.value)}
@@ -443,12 +461,9 @@ Demo: myshop.com
 - Implemented real-time inventory management"
                   className="textarea-field font-mono text-sm leading-relaxed min-h-[350px]"
                 />
-                
+
                 <div className="flex gap-4">
-                  <Button 
-                    onClick={addToExistingCV}
-                    disabled={loading}
-                  >
+                  <Button onClick={addToExistingCV} disabled={loading}>
                     {loading ? (
                       <>
                         <LuLoader className="animate-spin mr-2 h-4 w-4" />
@@ -460,17 +475,17 @@ Demo: myshop.com
                       </>
                     )}
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     variant="outline"
-                    onClick={() => setMode('structured')}
+                    onClick={() => setMode("structured")}
                   >
                     Cancel
                   </Button>
                 </div>
               </CardContent>
             </Card>
-          ) : mode === 'raw' ? (
+          ) : mode === "raw" ? (
             /* Raw Text Input Mode */
             <Card className="animate-[fade-in-up_0.5s_ease-out_forwards]">
               <CardHeader>
@@ -481,10 +496,11 @@ Demo: myshop.com
               </CardHeader>
               <CardContent className="space-y-6">
                 <p className="text-muted-foreground">
-                  Dump your existing resume, LinkedIn export, or any notes about your experience.
-                  Our AI will extract and structure everything for you.
+                  Dump your existing resume, LinkedIn export, or any notes about
+                  your experience. Our AI will extract and structure everything
+                  for you.
                 </p>
-                
+
                 <textarea
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
@@ -503,12 +519,9 @@ Software Engineer at Google (2020-Present)
 - Led migration to Kubernetes..."
                   className="textarea-field font-mono text-sm leading-relaxed min-h-[400px]"
                 />
-                
+
                 <div className="flex gap-4">
-                  <Button 
-                    onClick={parseWithAI}
-                    disabled={loading}
-                  >
+                  <Button onClick={parseWithAI} disabled={loading}>
                     {loading ? (
                       <>
                         <LuLoader className="animate-spin mr-2 h-4 w-4" />
@@ -520,13 +533,14 @@ Software Engineer at Google (2020-Present)
                       </>
                     )}
                   </Button>
-                  
+
                   {cv.personal_info?.name && (
-                    <Button 
+                    <Button
                       variant="outline"
-                      onClick={() => setMode('structured')}
+                      onClick={() => setMode("structured")}
                     >
-                      View Existing CV <LuChevronRight className="ml-2 h-4 w-4" />
+                      View Existing CV{" "}
+                      <LuChevronRight className="ml-2 h-4 w-4" />
                     </Button>
                   )}
                 </div>
@@ -539,7 +553,8 @@ Software Engineer at Google (2020-Present)
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <LuUser className="h-5 w-5 text-primary" /> Personal Information
+                    <LuUser className="h-5 w-5 text-primary" /> Personal
+                    Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -549,8 +564,10 @@ Software Engineer at Google (2020-Present)
                       <div className="relative">
                         <LuUser className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          value={cv.personal_info?.name || ''}
-                          onChange={(e) => updatePersonalInfo('name', e.target.value)}
+                          value={cv.personal_info?.name || ""}
+                          onChange={(e) =>
+                            updatePersonalInfo("name", e.target.value)
+                          }
                           className="pl-10"
                           placeholder="John Doe"
                         />
@@ -562,8 +579,10 @@ Software Engineer at Google (2020-Present)
                         <LuMail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           type="email"
-                          value={cv.personal_info?.email || ''}
-                          onChange={(e) => updatePersonalInfo('email', e.target.value)}
+                          value={cv.personal_info?.email || ""}
+                          onChange={(e) =>
+                            updatePersonalInfo("email", e.target.value)
+                          }
                           className="pl-10"
                           placeholder="john@example.com"
                         />
@@ -574,8 +593,10 @@ Software Engineer at Google (2020-Present)
                       <div className="relative">
                         <LuPhone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          value={cv.personal_info?.phone || ''}
-                          onChange={(e) => updatePersonalInfo('phone', e.target.value)}
+                          value={cv.personal_info?.phone || ""}
+                          onChange={(e) =>
+                            updatePersonalInfo("phone", e.target.value)
+                          }
                           className="pl-10"
                           placeholder="(555) 123-4567"
                         />
@@ -586,8 +607,10 @@ Software Engineer at Google (2020-Present)
                       <div className="relative">
                         <LuLinkedin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          value={cv.personal_info?.linkedin || ''}
-                          onChange={(e) => updatePersonalInfo('linkedin', e.target.value)}
+                          value={cv.personal_info?.linkedin || ""}
+                          onChange={(e) =>
+                            updatePersonalInfo("linkedin", e.target.value)
+                          }
                           className="pl-10"
                           placeholder="linkedin.com/in/johndoe"
                         />
@@ -598,8 +621,10 @@ Software Engineer at Google (2020-Present)
                       <div className="relative">
                         <LuGithub className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          value={cv.personal_info?.github || ''}
-                          onChange={(e) => updatePersonalInfo('github', e.target.value)}
+                          value={cv.personal_info?.github || ""}
+                          onChange={(e) =>
+                            updatePersonalInfo("github", e.target.value)
+                          }
                           className="pl-10"
                           placeholder="github.com/johndoe"
                         />
@@ -610,8 +635,10 @@ Software Engineer at Google (2020-Present)
                       <div className="relative">
                         <LuGlobe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          value={cv.personal_info?.website || ''}
-                          onChange={(e) => updatePersonalInfo('website', e.target.value)}
+                          value={cv.personal_info?.website || ""}
+                          onChange={(e) =>
+                            updatePersonalInfo("website", e.target.value)
+                          }
                           className="pl-10"
                           placeholder="johndoe.com"
                         />
@@ -625,7 +652,8 @@ Software Engineer at Google (2020-Present)
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
-                    <LuGraduationCap className="h-5 w-5 text-primary" /> Education
+                    <LuGraduationCap className="h-5 w-5 text-primary" />{" "}
+                    Education
                   </CardTitle>
                   <Button variant="outline" size="sm" onClick={addEducation}>
                     <LuPlus className="mr-2 h-4 w-4" /> Add
@@ -633,11 +661,14 @@ Software Engineer at Google (2020-Present)
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {cv.education?.map((edu, index) => (
-                    <div key={index} className="p-4 bg-muted/30 rounded-lg border border-border">
+                    <div
+                      key={index}
+                      className="p-4 bg-muted/30 rounded-lg border border-border"
+                    >
                       <div className="flex justify-between items-start mb-3">
                         <Badge variant="secondary">Entry #{index + 1}</Badge>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => removeEducation(index)}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -647,32 +678,46 @@ Software Engineer at Google (2020-Present)
                       </div>
                       <div className="grid md:grid-cols-2 gap-3">
                         <Input
-                          value={edu.institution || ''}
-                          onChange={(e) => updateEducation(index, 'institution', e.target.value)}
+                          value={edu.institution || ""}
+                          onChange={(e) =>
+                            updateEducation(
+                              index,
+                              "institution",
+                              e.target.value,
+                            )
+                          }
                           placeholder="Institution"
                         />
                         <Input
-                          value={edu.location || ''}
-                          onChange={(e) => updateEducation(index, 'location', e.target.value)}
+                          value={edu.location || ""}
+                          onChange={(e) =>
+                            updateEducation(index, "location", e.target.value)
+                          }
                           placeholder="Location"
                         />
                         <Input
-                          value={edu.degree || ''}
-                          onChange={(e) => updateEducation(index, 'degree', e.target.value)}
+                          value={edu.degree || ""}
+                          onChange={(e) =>
+                            updateEducation(index, "degree", e.target.value)
+                          }
                           placeholder="Degree"
                         />
                         <Input
-                          value={edu.dates || ''}
-                          onChange={(e) => updateEducation(index, 'dates', e.target.value)}
+                          value={edu.dates || ""}
+                          onChange={(e) =>
+                            updateEducation(index, "dates", e.target.value)
+                          }
                           placeholder="Dates (e.g., Aug 2018 - May 2022)"
                         />
                       </div>
                     </div>
                   ))}
-                  
+
                   {(!cv.education || cv.education.length === 0) && (
                     <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
-                      <p className="text-muted-foreground">No education entries yet.</p>
+                      <p className="text-muted-foreground">
+                        No education entries yet.
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -690,11 +735,14 @@ Software Engineer at Google (2020-Present)
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {cv.experience?.map((exp, index) => (
-                    <div key={index} className="p-4 bg-muted/30 rounded-lg border border-border">
+                    <div
+                      key={index}
+                      className="p-4 bg-muted/30 rounded-lg border border-border"
+                    >
                       <div className="flex justify-between items-start mb-3">
                         <Badge variant="secondary">Position #{index + 1}</Badge>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => removeExperience(index)}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -704,43 +752,61 @@ Software Engineer at Google (2020-Present)
                       </div>
                       <div className="grid md:grid-cols-2 gap-3 mb-4">
                         <Input
-                          value={exp.role || ''}
-                          onChange={(e) => updateExperience(index, 'role', e.target.value)}
+                          value={exp.role || ""}
+                          onChange={(e) =>
+                            updateExperience(index, "role", e.target.value)
+                          }
                           placeholder="Job Title"
                         />
                         <Input
-                          value={exp.company || ''}
-                          onChange={(e) => updateExperience(index, 'company', e.target.value)}
+                          value={exp.company || ""}
+                          onChange={(e) =>
+                            updateExperience(index, "company", e.target.value)
+                          }
                           placeholder="Company"
                         />
                         <Input
-                          value={exp.location || ''}
-                          onChange={(e) => updateExperience(index, 'location', e.target.value)}
+                          value={exp.location || ""}
+                          onChange={(e) =>
+                            updateExperience(index, "location", e.target.value)
+                          }
                           placeholder="Location"
                         />
                         <Input
-                          value={exp.dates || ''}
-                          onChange={(e) => updateExperience(index, 'dates', e.target.value)}
+                          value={exp.dates || ""}
+                          onChange={(e) =>
+                            updateExperience(index, "dates", e.target.value)
+                          }
                           placeholder="Dates"
                         />
                       </div>
-                      
+
                       <Label className="mb-2 block">Bullet Points</Label>
                       <div className="space-y-2">
                         {exp.points?.map((point, pIndex) => (
                           <div key={pIndex} className="flex gap-2">
-                            <span className="text-muted-foreground mt-2.5">•</span>
+                            <span className="text-muted-foreground mt-2.5">
+                              •
+                            </span>
                             <textarea
                               value={point}
-                              onChange={(e) => updateExperiencePoint(index, pIndex, e.target.value)}
+                              onChange={(e) =>
+                                updateExperiencePoint(
+                                  index,
+                                  pIndex,
+                                  e.target.value,
+                                )
+                              }
                               className="textarea-field flex-1 min-h-[60px] text-sm"
                               placeholder="Describe an achievement or responsibility..."
                               rows={2}
                             />
-                            <Button 
+                            <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => removeExperiencePoint(index, pIndex)}
+                              onClick={() =>
+                                removeExperiencePoint(index, pIndex)
+                              }
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 mt-1"
                             >
                               <LuTrash2 className="h-4 w-4" />
@@ -748,7 +814,7 @@ Software Engineer at Google (2020-Present)
                           </div>
                         ))}
                       </div>
-                      <Button 
+                      <Button
                         variant="link"
                         size="sm"
                         onClick={() => addExperiencePoint(index)}
@@ -758,10 +824,12 @@ Software Engineer at Google (2020-Present)
                       </Button>
                     </div>
                   ))}
-                  
+
                   {(!cv.experience || cv.experience.length === 0) && (
                     <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
-                      <p className="text-muted-foreground">No experience entries yet.</p>
+                      <p className="text-muted-foreground">
+                        No experience entries yet.
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -779,11 +847,14 @@ Software Engineer at Google (2020-Present)
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {cv.projects?.map((proj, index) => (
-                    <div key={index} className="p-4 bg-muted/30 rounded-lg border border-border">
+                    <div
+                      key={index}
+                      className="p-4 bg-muted/30 rounded-lg border border-border"
+                    >
                       <div className="flex justify-between items-start mb-3">
                         <Badge variant="secondary">Project #{index + 1}</Badge>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => removeProject(index)}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -793,46 +864,63 @@ Software Engineer at Google (2020-Present)
                       </div>
                       <div className="grid md:grid-cols-2 gap-3 mb-4">
                         <Input
-                          value={proj.name || ''}
-                          onChange={(e) => updateProject(index, 'name', e.target.value)}
+                          value={proj.name || ""}
+                          onChange={(e) =>
+                            updateProject(index, "name", e.target.value)
+                          }
                           placeholder="Project Name"
                         />
                         <Input
-                          value={proj.dates || ''}
-                          onChange={(e) => updateProject(index, 'dates', e.target.value)}
+                          value={proj.dates || ""}
+                          onChange={(e) =>
+                            updateProject(index, "dates", e.target.value)
+                          }
                           placeholder="Dates"
                         />
                         <Input
-                          value={proj.technologies || ''}
-                          onChange={(e) => updateProject(index, 'technologies', e.target.value)}
+                          value={proj.technologies || ""}
+                          onChange={(e) =>
+                            updateProject(index, "technologies", e.target.value)
+                          }
                           className="md:col-span-2"
                           placeholder="Technologies (e.g., React, Node.js, MongoDB)"
                         />
                         <div className="md:col-span-2 space-y-2">
                           <Label className="flex items-center gap-2">
-                            <LuGlobe className="h-4 w-4" /> Demo/Live Link (Optional)
+                            <LuGlobe className="h-4 w-4" /> Demo/Live Link
+                            (Optional)
                           </Label>
                           <Input
-                            value={proj.demo_link || ''}
-                            onChange={(e) => updateProject(index, 'demo_link', e.target.value)}
+                            value={proj.demo_link || ""}
+                            onChange={(e) =>
+                              updateProject(index, "demo_link", e.target.value)
+                            }
                             placeholder="https://myproject.com or github.com/username/project"
                           />
                         </div>
                       </div>
-                      
+
                       <Label className="mb-2 block">Bullet Points</Label>
                       <div className="space-y-2">
                         {proj.points?.map((point, pIndex) => (
                           <div key={pIndex} className="flex gap-2">
-                            <span className="text-muted-foreground mt-2.5">•</span>
+                            <span className="text-muted-foreground mt-2.5">
+                              •
+                            </span>
                             <textarea
                               value={point}
-                              onChange={(e) => updateProjectPoint(index, pIndex, e.target.value)}
+                              onChange={(e) =>
+                                updateProjectPoint(
+                                  index,
+                                  pIndex,
+                                  e.target.value,
+                                )
+                              }
                               className="textarea-field flex-1 min-h-[60px] text-sm"
                               placeholder="Describe the project..."
                               rows={2}
                             />
-                            <Button 
+                            <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => removeProjectPoint(index, pIndex)}
@@ -843,7 +931,7 @@ Software Engineer at Google (2020-Present)
                           </div>
                         ))}
                       </div>
-                      <Button 
+                      <Button
                         variant="link"
                         size="sm"
                         onClick={() => addProjectPoint(index)}
@@ -853,7 +941,7 @@ Software Engineer at Google (2020-Present)
                       </Button>
                     </div>
                   ))}
-                  
+
                   {(!cv.projects || cv.projects.length === 0) && (
                     <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
                       <p className="text-muted-foreground">No projects yet.</p>
@@ -866,7 +954,8 @@ Software Engineer at Google (2020-Present)
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <LuWrench className="h-5 w-5 text-primary" /> Technical Skills
+                    <LuWrench className="h-5 w-5 text-primary" /> Technical
+                    Skills
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -874,32 +963,38 @@ Software Engineer at Google (2020-Present)
                     <div className="space-y-2">
                       <Label>Programming Languages</Label>
                       <Input
-                        value={cv.skills?.languages?.join(', ') || ''}
-                        onChange={(e) => updateSkills('languages', e.target.value)}
+                        value={cv.skills?.languages?.join(", ") || ""}
+                        onChange={(e) =>
+                          updateSkills("languages", e.target.value)
+                        }
                         placeholder="Python, JavaScript, Java, C++"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Frameworks</Label>
                       <Input
-                        value={cv.skills?.frameworks?.join(', ') || ''}
-                        onChange={(e) => updateSkills('frameworks', e.target.value)}
+                        value={cv.skills?.frameworks?.join(", ") || ""}
+                        onChange={(e) =>
+                          updateSkills("frameworks", e.target.value)
+                        }
                         placeholder="React, Node.js, Django, Spring"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Developer Tools</Label>
                       <Input
-                        value={cv.skills?.tools?.join(', ') || ''}
-                        onChange={(e) => updateSkills('tools', e.target.value)}
+                        value={cv.skills?.tools?.join(", ") || ""}
+                        onChange={(e) => updateSkills("tools", e.target.value)}
                         placeholder="Git, Docker, AWS, VS Code"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Libraries</Label>
                       <Input
-                        value={cv.skills?.libraries?.join(', ') || ''}
-                        onChange={(e) => updateSkills('libraries', e.target.value)}
+                        value={cv.skills?.libraries?.join(", ") || ""}
+                        onChange={(e) =>
+                          updateSkills("libraries", e.target.value)
+                        }
                         placeholder="TensorFlow, NumPy, Pandas"
                       />
                     </div>
@@ -909,13 +1004,13 @@ Software Engineer at Google (2020-Present)
 
               {/* Action Buttons */}
               <div className="flex gap-4 justify-end pt-4">
-                <Button 
-                  onClick={saveCV} 
-                  disabled={saving} 
-                  size="lg"
-                >
-                  {saving ? <LuLoader className="animate-spin mr-2 h-4 w-4" /> : <LuSave className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : 'Save Master CV'}
+                <Button onClick={saveCV} disabled={saving} size="lg">
+                  {saving ? (
+                    <LuLoader className="animate-spin mr-2 h-4 w-4" />
+                  ) : (
+                    <LuSave className="mr-2 h-4 w-4" />
+                  )}
+                  {saving ? "Saving..." : "Save Master CV"}
                 </Button>
                 <Link href="/tailor">
                   <Button variant="outline" size="lg">
@@ -927,7 +1022,7 @@ Software Engineer at Google (2020-Present)
           )}
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

@@ -1,4 +1,4 @@
-/** 
+/**
  * EXAMPLE: How to use the new features
  */
 
@@ -7,19 +7,19 @@ const cvWithDemoLinks = {
   personal_info: {
     name: "John Doe",
     email: "john@example.com",
-    github: "github.com/johndoe"
+    github: "github.com/johndoe",
   },
   projects: [
     {
       name: "E-commerce Platform",
       technologies: "React, Node.js, PostgreSQL",
       dates: "2024",
-      demo_link: "https://myshop.com",  // ← NEW: Demo link field
+      demo_link: "https://myshop.com", // ← NEW: Demo link field
       points: [
         "Built full-stack shopping platform with payment integration",
-        "Implemented real-time inventory management"
-      ]
-    }
+        "Implemented real-time inventory management",
+      ],
+    },
   ],
   experience: [],
   education: [],
@@ -27,8 +27,8 @@ const cvWithDemoLinks = {
     languages: ["JavaScript", "Python"],
     frameworks: ["React", "Node.js"],
     tools: ["Git", "Docker"],
-    libraries: []
-  }
+    libraries: [],
+  },
 };
 
 // Example 2: Add new experience to existing CV
@@ -58,7 +58,7 @@ We are looking for a Senior Backend Engineer with experience in:
 // The AI will:
 // 1. Extract keywords: Kubernetes, microservices, AWS, Python, Go, CI/CD, distributed systems
 // 2. Select 2-3 most relevant experiences
-// 3. Select 2-3 most relevant projects  
+// 3. Select 2-3 most relevant projects
 // 4. Limit each to 2-3 bullet points
 // 5. Incorporate keywords naturally into bullet points
 // 6. Add keywords to skills section if applicable
@@ -78,7 +78,7 @@ const latexOutput = `
     \\resumeSubHeadingListEnd
 `;
 
-// Note: 
+// Note:
 // - Project name is now a hyperlink (clickable in PDF)
 // - No \vspace{-7pt} between project heading and technologies
 // - Only 2 bullet points (enforcing 1-page limit)

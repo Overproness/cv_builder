@@ -1,14 +1,14 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 if (!process.env.GEMINI_API_KEY) {
-  console.warn('Warning: GEMINI_API_KEY not set. AI features will not work.');
+  console.warn("Warning: GEMINI_API_KEY not set. AI features will not work.");
 }
 
-const genAI = process.env.GEMINI_API_KEY 
+const genAI = process.env.GEMINI_API_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
-const model = genAI?.getGenerativeModel({ model: 'gemini-flash-latest' });
+const model = genAI?.getGenerativeModel({ model: "gemini-flash-latest" });
 
 // Master CV JSON Schema for reference
 const CV_SCHEMA = `{
@@ -60,7 +60,7 @@ const CV_SCHEMA = `{
  */
 export async function parseRawTextToCV(rawText) {
   if (!model) {
-    throw new Error('Gemini API not configured. Please set GEMINI_API_KEY.');
+    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
   }
 
   const prompt = `You are an expert resume parser. Extract the user's professional information from the following raw text and structure it into a clean JSON format.
@@ -95,24 +95,33 @@ OUTPUT (valid JSON only with ALL blocks included):`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let text = response.text();
-    
+
     // Clean up the response - remove markdown code blocks if present
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
+    text = text
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+
     // Parse and validate JSON
     const parsed = JSON.parse(text);
-    
+
     // Validate that we have the expected structure
     if (!parsed.education) parsed.education = [];
     if (!parsed.experience) parsed.experience = [];
     if (!parsed.projects) parsed.projects = [];
-    if (!parsed.skills) parsed.skills = { languages: [], frameworks: [], tools: [], libraries: [] };
+    if (!parsed.skills)
+      parsed.skills = {
+        languages: [],
+        frameworks: [],
+        tools: [],
+        libraries: [],
+      };
     if (!parsed.personal_info) parsed.personal_info = {};
-    
+
     return parsed;
   } catch (error) {
-    console.error('Error parsing CV with Gemini:', error);
-    throw new Error('Failed to parse CV. Please try again.');
+    console.error("Error parsing CV with Gemini:", error);
+    throw new Error("Failed to parse CV. Please try again.");
   }
 }
 
@@ -120,12 +129,16 @@ OUTPUT (valid JSON only with ALL blocks included):`;
  * Add new experience or projects to an existing CV
  * Useful for updating CV with new job or project completions
  */
-export async function addToExistingCV(existingCV, newContent, contentType = 'auto') {
+export async function addToExistingCV(
+  existingCV,
+  newContent,
+  contentType = "auto",
+) {
   if (!model) {
-    throw new Error('Gemini API not configured. Please set GEMINI_API_KEY.');
+    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
   }
 
-  const prompt = `You are an expert resume editor. The user has an existing CV and wants to add new ${contentType === 'auto' ? 'experience or projects' : contentType} to it.
+  const prompt = `You are an expert resume editor. The user has an existing CV and wants to add new ${contentType === "auto" ? "experience or projects" : contentType} to it.
 
 CRITICAL REQUIREMENTS:
 1. Output ONLY valid JSON, no markdown code blocks or explanations
@@ -152,23 +165,32 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let text = response.text();
-    
+
     // Clean up the response
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
+    text = text
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+
     const parsed = JSON.parse(text);
-    
+
     // Validate structure
     if (!parsed.education) parsed.education = existingCV.education || [];
     if (!parsed.experience) parsed.experience = existingCV.experience || [];
     if (!parsed.projects) parsed.projects = existingCV.projects || [];
-    if (!parsed.skills) parsed.skills = existingCV.skills || { languages: [], frameworks: [], tools: [], libraries: [] };
+    if (!parsed.skills)
+      parsed.skills = existingCV.skills || {
+        languages: [],
+        frameworks: [],
+        tools: [],
+        libraries: [],
+      };
     if (!parsed.personal_info) parsed.personal_info = existingCV.personal_info;
-    
+
     return parsed;
   } catch (error) {
-    console.error('Error adding content to CV with Gemini:', error);
-    throw new Error('Failed to add content to CV. Please try again.');
+    console.error("Error adding content to CV with Gemini:", error);
+    throw new Error("Failed to add content to CV. Please try again.");
   }
 }
 
@@ -178,15 +200,14 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
  */
 export async function tailorCVForJob(masterCV, jobDescription) {
   if (!model) {
-    throw new Error('Gemini API not configured. Please set GEMINI_API_KEY.');
+    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
   }
 
   // Count blocks in master CV for validation
-  const totalBlocks = (
+  const totalBlocks =
     (masterCV.education?.length || 0) +
     (masterCV.experience?.length || 0) +
-    (masterCV.projects?.length || 0)
-  );
+    (masterCV.projects?.length || 0);
 
   const prompt = `You are an expert resume consultant. Analyze the provided Master CV JSON against the Job Description and create a tailored resume that maximizes relevance.
 
@@ -249,30 +270,39 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
       topP: 0.8,
       topK: 20,
     };
-    
+
     const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig,
     });
-    
+
     const response = await result.response;
     let text = response.text();
-    
+
     // Clean up the response
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
+    text = text
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+
     const parsed = JSON.parse(text);
-    
+
     // Validate structure
     if (!parsed.education) parsed.education = [];
     if (!parsed.experience) parsed.experience = [];
     if (!parsed.projects) parsed.projects = [];
-    if (!parsed.skills) parsed.skills = masterCV.skills || { languages: [], frameworks: [], tools: [], libraries: [] };
+    if (!parsed.skills)
+      parsed.skills = masterCV.skills || {
+        languages: [],
+        frameworks: [],
+        tools: [],
+        libraries: [],
+      };
     if (!parsed.personal_info) parsed.personal_info = masterCV.personal_info;
-    
+
     return parsed;
   } catch (error) {
-    console.error('Error tailoring CV with Gemini:', error);
-    throw new Error('Failed to tailor CV. Please try again.');
+    console.error("Error tailoring CV with Gemini:", error);
+    throw new Error("Failed to tailor CV. Please try again.");
   }
 }

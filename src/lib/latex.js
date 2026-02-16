@@ -5,18 +5,18 @@
 
 // Escape special LaTeX characters
 function escapeLatex(text) {
-  if (!text) return '';
+  if (!text) return "";
   return text
-    .replace(/\\/g, '\\textbackslash{}')
-    .replace(/&/g, '\\&')
-    .replace(/%/g, '\\%')
-    .replace(/\$/g, '\\$')
-    .replace(/#/g, '\\#')
-    .replace(/_/g, '\\_')
-    .replace(/{/g, '\\{')
-    .replace(/}/g, '\\}')
-    .replace(/~/g, '\\textasciitilde{}')
-    .replace(/\^/g, '\\textasciicircum{}');
+    .replace(/\\/g, "\\textbackslash{}")
+    .replace(/&/g, "\\&")
+    .replace(/%/g, "\\%")
+    .replace(/\$/g, "\\$")
+    .replace(/#/g, "\\#")
+    .replace(/_/g, "\\_")
+    .replace(/{/g, "\\{")
+    .replace(/}/g, "\\}")
+    .replace(/~/g, "\\textasciitilde{}")
+    .replace(/\^/g, "\\textasciicircum{}");
 }
 
 // Generate the LaTeX preamble with Jake's Resume macros
@@ -110,31 +110,44 @@ function generatePreamble() {
 // Generate heading section
 function generateHeading(personalInfo) {
   const { name, phone, email, linkedin, github, website } = personalInfo || {};
-  
+
   let contacts = [];
   if (phone) contacts.push(escapeLatex(phone));
-  if (email) contacts.push(`\\href{mailto:${email}}{\\underline{${escapeLatex(email)}}}`);
+  if (email)
+    contacts.push(
+      `\\href{mailto:${email}}{\\underline{${escapeLatex(email)}}}`,
+    );
   if (linkedin) {
-    const linkedinUrl = linkedin.startsWith('http') ? linkedin : `https://${linkedin}`;
-    const linkedinDisplay = linkedin.replace(/^https?:\/\//, '');
-    contacts.push(`\\href{${linkedinUrl}}{\\underline{${escapeLatex(linkedinDisplay)}}}`);
+    const linkedinUrl = linkedin.startsWith("http")
+      ? linkedin
+      : `https://${linkedin}`;
+    const linkedinDisplay = linkedin.replace(/^https?:\/\//, "");
+    contacts.push(
+      `\\href{${linkedinUrl}}{\\underline{${escapeLatex(linkedinDisplay)}}}`,
+    );
   }
   if (github) {
-    const githubUrl = github.startsWith('http') ? github : `https://${github}`;
-    const githubDisplay = github.replace(/^https?:\/\//, '');
-    contacts.push(`\\href{${githubUrl}}{\\underline{${escapeLatex(githubDisplay)}}}`);
+    const githubUrl = github.startsWith("http") ? github : `https://${github}`;
+    const githubDisplay = github.replace(/^https?:\/\//, "");
+    contacts.push(
+      `\\href{${githubUrl}}{\\underline{${escapeLatex(githubDisplay)}}}`,
+    );
   }
   if (website) {
-    const websiteUrl = website.startsWith('http') ? website : `https://${website}`;
-    contacts.push(`\\href{${websiteUrl}}{\\underline{${escapeLatex(website.replace(/^https?:\/\//, ''))}}}`);
+    const websiteUrl = website.startsWith("http")
+      ? website
+      : `https://${website}`;
+    contacts.push(
+      `\\href{${websiteUrl}}{\\underline{${escapeLatex(website.replace(/^https?:\/\//, ""))}}}`,
+    );
   }
 
   return `\\begin{document}
 
 %----------HEADING----------
 \\begin{center}
-    \\textbf{\\Huge \\scshape ${escapeLatex(name || 'Your Name')}} \\\\ \\vspace{1pt}
-    \\small ${contacts.join(' $|$ ')}
+    \\textbf{\\Huge \\scshape ${escapeLatex(name || "Your Name")}} \\\\ \\vspace{1pt}
+    \\small ${contacts.join(" $|$ ")}
 \\end{center}
 
 `;
@@ -142,7 +155,7 @@ function generateHeading(personalInfo) {
 
 // Generate education section
 function generateEducation(education) {
-  if (!education || education.length === 0) return '';
+  if (!education || education.length === 0) return "";
 
   let section = `%-----------EDUCATION-----------
 \\section{Education}
@@ -151,8 +164,8 @@ function generateEducation(education) {
 
   for (const edu of education) {
     section += `    \\resumeSubheading
-      {${escapeLatex(edu.institution || '')}}{${escapeLatex(edu.location || '')}}
-      {${escapeLatex(edu.degree || '')}}{${escapeLatex(edu.dates || '')}}
+      {${escapeLatex(edu.institution || "")}}{${escapeLatex(edu.location || "")}}
+      {${escapeLatex(edu.degree || "")}}{${escapeLatex(edu.dates || "")}}
 `;
   }
 
@@ -164,7 +177,7 @@ function generateEducation(education) {
 
 // Generate experience section
 function generateExperience(experience) {
-  if (!experience || experience.length === 0) return '';
+  if (!experience || experience.length === 0) return "";
 
   let section = `%-----------EXPERIENCE-----------
 \\section{Experience}
@@ -174,16 +187,16 @@ function generateExperience(experience) {
   for (const exp of experience) {
     section += `
     \\resumeSubheading
-      {${escapeLatex(exp.role || '')}}{${escapeLatex(exp.dates || '')}}
-      {${escapeLatex(exp.company || '')}}{${escapeLatex(exp.location || '')}}
+      {${escapeLatex(exp.role || "")}}{${escapeLatex(exp.dates || "")}}
+      {${escapeLatex(exp.company || "")}}{${escapeLatex(exp.location || "")}}
       \\resumeItemListStart
 `;
-    
-    for (const point of (exp.points || [])) {
+
+    for (const point of exp.points || []) {
       section += `        \\resumeItem{${escapeLatex(point)}}
 `;
     }
-    
+
     section += `      \\resumeItemListEnd
 `;
   }
@@ -197,7 +210,7 @@ function generateExperience(experience) {
 
 // Generate projects section
 function generateProjects(projects) {
-  if (!projects || projects.length === 0) return '';
+  if (!projects || projects.length === 0) return "";
 
   let section = `%-----------PROJECTS-----------
 \\section{Projects}
@@ -206,30 +219,32 @@ function generateProjects(projects) {
 
   for (const proj of projects) {
     // Format project name with demo link if available
-    let projectName = escapeLatex(proj.name || '');
+    let projectName = escapeLatex(proj.name || "");
     if (proj.demo_link) {
-      const demoUrl = proj.demo_link.startsWith('http') ? proj.demo_link : `https://${proj.demo_link}`;
+      const demoUrl = proj.demo_link.startsWith("http")
+        ? proj.demo_link
+        : `https://${proj.demo_link}`;
       projectName = `\\href{${demoUrl}}{${projectName}}`;
     }
-    
+
     section += `      \\resumeProjectHeading
-          {\\textbf{${projectName}}}{${escapeLatex(proj.dates || '')}}
+          {\\textbf{${projectName}}}{${escapeLatex(proj.dates || "")}}
 `;
-    
+
     // Add technologies as a separate line if present (removed vspace)
     if (proj.technologies && proj.technologies.trim()) {
       section += `          \\small{\\emph{${escapeLatex(proj.technologies)}}}
 `;
     }
-    
+
     section += `          \\resumeItemListStart
 `;
-    
-    for (const point of (proj.points || [])) {
+
+    for (const point of proj.points || []) {
       section += `            \\resumeItem{${escapeLatex(point)}}
 `;
     }
-    
+
     section += `          \\resumeItemListEnd
 `;
   }
@@ -242,23 +257,35 @@ function generateProjects(projects) {
 
 // Generate skills section
 function generateSkills(skills) {
-  if (!skills) return '';
+  if (!skills) return "";
 
   const { languages, frameworks, tools, libraries } = skills;
-  
-  let skillLines = [];
-  if (languages?.length) skillLines.push(`\\textbf{Languages}{: ${escapeLatex(languages.join(', '))}}`);
-  if (frameworks?.length) skillLines.push(`\\textbf{Frameworks}{: ${escapeLatex(frameworks.join(', '))}}`);
-  if (tools?.length) skillLines.push(`\\textbf{Developer Tools}{: ${escapeLatex(tools.join(', '))}}`);
-  if (libraries?.length) skillLines.push(`\\textbf{Libraries}{: ${escapeLatex(libraries.join(', '))}}`);
 
-  if (skillLines.length === 0) return '';
+  let skillLines = [];
+  if (languages?.length)
+    skillLines.push(
+      `\\textbf{Languages}{: ${escapeLatex(languages.join(", "))}}`,
+    );
+  if (frameworks?.length)
+    skillLines.push(
+      `\\textbf{Frameworks}{: ${escapeLatex(frameworks.join(", "))}}`,
+    );
+  if (tools?.length)
+    skillLines.push(
+      `\\textbf{Developer Tools}{: ${escapeLatex(tools.join(", "))}}`,
+    );
+  if (libraries?.length)
+    skillLines.push(
+      `\\textbf{Libraries}{: ${escapeLatex(libraries.join(", "))}}`,
+    );
+
+  if (skillLines.length === 0) return "";
 
   return `%-----------TECHNICAL SKILLS-----------
 \\section{Technical Skills}
  \\begin{itemize}[leftmargin=0.15in, label={}]
     \\small{\\item{
-     ${skillLines.join(' \\\\\n     ')}
+     ${skillLines.join(" \\\\\n     ")}
     }}
  \\end{itemize}
 
@@ -287,12 +314,12 @@ export function generateLatex(cvData) {
 export function getEmptyCVTemplate() {
   return {
     personal_info: {
-      name: '',
-      phone: '',
-      email: '',
-      linkedin: '',
-      github: '',
-      website: ''
+      name: "",
+      phone: "",
+      email: "",
+      linkedin: "",
+      github: "",
+      website: "",
     },
     education: [],
     experience: [],
@@ -301,7 +328,7 @@ export function getEmptyCVTemplate() {
       languages: [],
       frameworks: [],
       tools: [],
-      libraries: []
-    }
+      libraries: [],
+    },
   };
 }
