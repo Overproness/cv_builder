@@ -50,8 +50,10 @@ const emptyCVTemplate = {
 };
 
 export default function CVPage() {
-  const [mode, setMode] = useState('raw'); // 'raw' or 'structured'
+  const [mode, setMode] = useState('raw'); // 'raw', 'structured', or 'add'
   const [rawText, setRawText] = useState('');
+  const [addContent, setAddContent] = useState('');
+  const [addType, setAddType] = useState('auto'); // 'auto', 'experience', 'project'
   const [cv, setCV] = useState(emptyCVTemplate);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -104,6 +106,46 @@ export default function CVPage() {
       }
     } catch (error) {
       showMessage('Failed to parse CV. Please try again.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToExistingCV = async () => {
+    if (!addContent.trim()) {
+      showMessage('Please enter content to add', 'error');
+      return;
+    }
+    
+    if (!cv.personal_info?.name) {
+      showMessage('Please create or load a CV first', 'error');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await fetch('/api/resume/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          existingCV: cv, 
+          newContent: addContent,
+          contentType: addType
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.updatedCV) {
+        setCV(data.updatedCV);
+        setAddContent('');
+        setMode('structured');
+        showMessage('Content added successfully!', 'success');
+      } else {
+        showMessage(data.error || 'Failed to add content', 'error');
+      }
+    } catch (error) {
+      showMessage('Failed to add content. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -225,7 +267,7 @@ export default function CVPage() {
   const addProject = () => {
     setCV(prev => ({
       ...prev,
-      projects: [...prev.projects, { name: '', technologies: '', dates: '', points: [''] }]
+      projects: [...prev.projects, { name: '', technologies: '', dates: '', demo_link: '', points: [''] }]
     }));
   };
 
@@ -320,6 +362,12 @@ export default function CVPage() {
               <div className="flex gap-3">
                 <Button 
                   variant="outline"
+                  onClick={() => setMode('add')}
+                >
+                  <LuPlus className="mr-2 h-4 w-4" /> Add to CV
+                </Button>
+                <Button 
+                  variant="outline"
                   onClick={() => setMode('raw')}
                 >
                   <LuRefreshCw className="mr-2 h-4 w-4" /> Parse New
@@ -335,7 +383,94 @@ export default function CVPage() {
             )}
           </div>
 
-          {mode === 'raw' ? (
+          {mode === 'add' ? (
+            /* Add to Existing CV Mode */
+            <Card className="animate-[fade-in-up_0.5s_ease-out_forwards]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <LuPlus className="h-5 w-5 text-primary" />
+                  Add Experience or Project
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <p className="text-muted-foreground">
+                  Describe a new job, internship, or project you've completed. AI will parse it and add it to your CV.
+                </p>
+                
+                <div className="space-y-2">
+                  <Label>What are you adding?</Label>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant={addType === 'auto' ? 'default' : 'outline'}
+                      size="sm" 
+                      onClick={() => setAddType('auto')}
+                    >
+                      Auto-detect
+                    </Button>
+                    <Button 
+                      variant={addType === 'experience' ? 'default' : 'outline'}
+                      size="sm" 
+                      onClick={() => setAddType('experience')}
+                    >
+                      Experience
+                    </Button>
+                    <Button 
+                      variant={addType === 'project' ? 'default' : 'outline'}
+                      size="sm" 
+                      onClick={() => setAddType('project')}
+                    >
+                      Project
+                    </Button>
+                  </div>
+                </div>
+                
+                <textarea
+                  value={addContent}
+                  onChange={(e) => setAddContent(e.target.value)}
+                  placeholder="Describe your new experience or project...
+
+Example:
+Senior Software Engineer at Microsoft (Jan 2025 - Present)
+- Led team of 5 engineers building cloud infrastructure
+- Reduced deployment time by 40% using Kubernetes
+- Implemented CI/CD pipeline serving 100K+ requests/day
+
+Or for a project:
+E-commerce Platform (2024)
+Built with React, Node.js, PostgreSQL
+Demo: myshop.com
+- Created full-stack shopping platform with payment integration
+- Implemented real-time inventory management"
+                  className="textarea-field font-mono text-sm leading-relaxed min-h-[350px]"
+                />
+                
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={addToExistingCV}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <LuLoader className="animate-spin mr-2 h-4 w-4" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <LuSparkles className="mr-2 h-4 w-4" /> Add to CV
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    onClick={() => setMode('structured')}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : mode === 'raw' ? (
             /* Raw Text Input Mode */
             <Card className="animate-[fade-in-up_0.5s_ease-out_forwards]">
               <CardHeader>
@@ -673,6 +808,16 @@ Software Engineer at Google (2020-Present)
                           className="md:col-span-2"
                           placeholder="Technologies (e.g., React, Node.js, MongoDB)"
                         />
+                        <div className="md:col-span-2 space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <LuGlobe className="h-4 w-4" /> Demo/Live Link (Optional)
+                          </Label>
+                          <Input
+                            value={proj.demo_link || ''}
+                            onChange={(e) => updateProject(index, 'demo_link', e.target.value)}
+                            placeholder="https://myproject.com or github.com/username/project"
+                          />
+                        </div>
                       </div>
                       
                       <Label className="mb-2 block">Bullet Points</Label>

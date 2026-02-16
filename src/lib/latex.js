@@ -205,15 +205,20 @@ function generateProjects(projects) {
 `;
 
   for (const proj of projects) {
-    // Fixed formatting: technologies on separate line to prevent overflow
+    // Format project name with demo link if available
+    let projectName = escapeLatex(proj.name || '');
+    if (proj.demo_link) {
+      const demoUrl = proj.demo_link.startsWith('http') ? proj.demo_link : `https://${proj.demo_link}`;
+      projectName = `\\href{${demoUrl}}{${projectName}}`;
+    }
+    
     section += `      \\resumeProjectHeading
-          {\\textbf{${escapeLatex(proj.name || '')}}}{${escapeLatex(proj.dates || '')}}
+          {\\textbf{${projectName}}}{${escapeLatex(proj.dates || '')}}
 `;
     
-    // Add technologies as a separate line if present
+    // Add technologies as a separate line if present (removed vspace)
     if (proj.technologies && proj.technologies.trim()) {
-      section += `          \\vspace{-7pt}
-          \\small{\\emph{${escapeLatex(proj.technologies)}}}
+      section += `          \\small{\\emph{${escapeLatex(proj.technologies)}}}
 `;
     }
     

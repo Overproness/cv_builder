@@ -42,6 +42,7 @@ const CV_SCHEMA = `{
       "name": "string",
       "technologies": "string (comma-separated tech stack)",
       "dates": "string",
+      "demo_link": "string (URL, optional - deployed project or demo)",
       "points": ["string (bullet point describing the project)"]
     }
   ],
@@ -116,6 +117,62 @@ OUTPUT (valid JSON only with ALL blocks included):`;
 }
 
 /**
+ * Add new experience or projects to an existing CV
+ * Useful for updating CV with new job or project completions
+ */
+export async function addToExistingCV(existingCV, newContent, contentType = 'auto') {
+  if (!model) {
+    throw new Error('Gemini API not configured. Please set GEMINI_API_KEY.');
+  }
+
+  const prompt = `You are an expert resume editor. The user has an existing CV and wants to add new ${contentType === 'auto' ? 'experience or projects' : contentType} to it.
+
+CRITICAL REQUIREMENTS:
+1. Output ONLY valid JSON, no markdown code blocks or explanations
+2. Parse the new content and add it to the appropriate section(s) of the existing CV
+3. If contentType is 'auto', determine whether the new content is experience or project based on context
+4. Add new entries to the BEGINNING of the respective arrays (most recent first)
+5. Maintain all existing entries in the CV - do NOT remove or modify them
+6. Clean up the new content to match professional resume standards
+7. Use action verbs and quantify achievements where possible
+8. Extract demo/live links from projects if mentioned
+9. Keep the exact same JSON structure as the existing CV
+
+EXISTING CV JSON:
+${JSON.stringify(existingCV, null, 2)}
+
+NEW CONTENT TO ADD:
+${newContent}
+
+CONTENT TYPE: ${contentType}
+
+OUTPUT (updated CV as valid JSON with new content added at the top of relevant sections):`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text();
+    
+    // Clean up the response
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    const parsed = JSON.parse(text);
+    
+    // Validate structure
+    if (!parsed.education) parsed.education = existingCV.education || [];
+    if (!parsed.experience) parsed.experience = existingCV.experience || [];
+    if (!parsed.projects) parsed.projects = existingCV.projects || [];
+    if (!parsed.skills) parsed.skills = existingCV.skills || { languages: [], frameworks: [], tools: [], libraries: [] };
+    if (!parsed.personal_info) parsed.personal_info = existingCV.personal_info;
+    
+    return parsed;
+  } catch (error) {
+    console.error('Error adding content to CV with Gemini:', error);
+    throw new Error('Failed to add content to CV. Please try again.');
+  }
+}
+
+/**
  * Tailor a Master CV for a specific job description using block-based selection
  * This ensures consistent and deterministic results across multiple runs
  */
@@ -133,6 +190,20 @@ export async function tailorCVForJob(masterCV, jobDescription) {
 
   const prompt = `You are an expert resume consultant. Analyze the provided Master CV JSON against the Job Description and create a tailored resume that maximizes relevance.
 
+CRITICAL 1-PAGE RESUME REQUIREMENT:
+- Aim for approximately 400-450 words total (typical 1-page resume length)
+- Be HIGHLY selective with content - quality over quantity
+- Limit to 2-3 experience entries with 2-3 bullet points each
+- Limit to 2-3 project entries with 2-3 bullet points each  
+- Include ALL education entries (usually 1-2)
+- Prioritize most impactful and relevant content only
+
+ATS KEYWORD OPTIMIZATION:
+1. Extract key technical skills, tools, frameworks, and buzzwords from the job description
+2. Incorporate these keywords naturally into bullet points where applicable
+3. Add relevant keywords to the skills section even if not in original CV (if the candidate could reasonably have that skill based on their experience)
+4. Maintain authenticity - don't add false claims, but optimize language to match job requirements
+
 BLOCK-BASED SELECTION APPROACH:
 - The Master CV contains ${totalBlocks} total blocks:
   * ${masterCV.education?.length || 0} education blocks
@@ -140,7 +211,6 @@ BLOCK-BASED SELECTION APPROACH:
   * ${masterCV.projects?.length || 0} project blocks
 - You must select the MOST RELEVANT blocks for this job
 - Use CONSISTENT CRITERIA: relevance score based on keyword matches, required skills, and recency
-- When given the same Master CV and Job Description, always select the same blocks
 
 CRITICAL REQUIREMENTS:
 1. Output ONLY valid JSON, no markdown code blocks or explanations
@@ -148,14 +218,15 @@ CRITICAL REQUIREMENTS:
    a. Score each experience/project block by counting keyword matches with job description
    b. Prioritize blocks with highest relevance scores
    c. Include ALL education blocks (always relevant)
-   d. Include 2-4 experience blocks (select highest scoring)
-   e. Include 2-4 project blocks (select highest scoring)
+   d. Include 2-3 experience blocks (select highest scoring)
+   e. Include 2-3 project blocks (select highest scoring)
 3. For selected blocks, tailor bullet points to emphasize job-relevant keywords
-4. Keep personal_info identical to Master CV
-5. Maintain all bullet points for selected entries - do NOT truncate
-6. Tailor skills section to highlight job-relevant skills while keeping all that match
-7. Use exact same JSON structure as Master CV
-8. Ensure professional language and quantified achievements
+4. LIMIT each experience/project to 2-3 most impactful bullet points only
+5. Keep personal_info identical to Master CV
+6. Preserve demo_link field for projects if present in Master CV
+7. Tailor skills section to highlight job-relevant skills, adding keywords from job description
+8. Use exact same JSON structure as Master CV
+9. Ensure professional language and quantified achievements
 
 SELECTION CONSISTENCY RULES:
 - Always select the SAME blocks when given identical input
@@ -169,7 +240,7 @@ ${JSON.stringify(masterCV, null, 2)}
 JOB DESCRIPTION:
 ${jobDescription}
 
-OUTPUT (tailored resume as valid JSON only with consistently selected blocks):`;
+OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links preserved):`;
 
   try {
     // Use generation config for more deterministic output

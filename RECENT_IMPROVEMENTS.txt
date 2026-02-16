@@ -1,0 +1,118 @@
+CV BUILDER IMPROVEMENTS - February 2026
+========================================
+
+The following 5 major improvements have been implemented:
+
+1. ✅ ADD TO EXISTING CV FEATURE
+   - New API endpoint: /api/resume/add
+   - New function: addToExistingCV() in gemini.js
+   - New UI mode in CV page: "Add to CV" button
+   - Allows users to just describe new experience or projects
+   - AI automatically parses and adds to the top of existing CV
+   - Supports auto-detection or manual selection (experience/project)
+   
+   Usage Example:
+   "Senior Software Engineer at Microsoft (Jan 2025 - Present)
+   - Led team of 5 engineers building cloud infrastructure
+   - Reduced deployment time by 40% using Kubernetes"
+   
+   The AI will parse this and add it as a new experience entry.
+
+2. ✅ FIXED LATEX FORMATTING
+   - Removed \vspace{-7pt} from projects section in latex.js
+   - Projects now have proper spacing without negative vspace
+   - Technologies line flows naturally without extra vertical spacing
+   
+   Before:
+   \resumeProjectHeading
+     {\textbf{Project}}{2024}
+     \vspace{-7pt}  ← REMOVED
+     \small{\emph{Python, ML}}
+   
+   After:
+   \resumeProjectHeading
+     {\textbf{Project}}{2024}
+     \small{\emph{Python, ML}}
+
+3. ✅ 1-PAGE RESUME ENFORCEMENT
+   - Updated tailorCVForJob() in gemini.js
+   - Target: 400-450 words (typical 1-page resume)
+   - Limits to 2-3 experience entries with 2-3 bullets each
+   - Limits to 2-3 project entries with 2-3 bullets each
+   - Highly selective content - quality over quantity
+   - AI prioritizes most impactful and relevant content
+
+4. ✅ ATS KEYWORD OPTIMIZATION
+   - AI extracts key technical skills from job description
+   - Incorporates keywords naturally into bullet points
+   - Adds relevant keywords to skills section
+   - Maintains authenticity (no false claims)
+   - Optimizes language to match job requirements
+   
+   Example: If job mentions "Kubernetes" and user has Docker experience,
+   AI may add "container orchestration" or "Kubernetes" to skills if reasonable.
+
+5. ✅ DEMO/LIVE LINKS SUPPORT
+   - Added demo_link field to CV_SCHEMA in gemini.js
+   - Updated projects section in latex.js to render links
+   - Project names become hyperlinks if demo_link is provided
+   - UI now has "Demo/Live Link" input field for projects
+   - Links are preserved during CV tailoring
+   
+   In LaTeX output:
+   \href{https://myproject.com}{\textbf{Project Name}}
+   
+   UI shows: 🌐 Demo/Live Link (Optional) input field
+
+TECHNICAL CHANGES:
+==================
+
+Files Modified:
+- src/lib/gemini.js
+  * Updated CV_SCHEMA to include demo_link
+  * Added addToExistingCV() function
+  * Enhanced tailorCVForJob() with 1-page limit and ATS optimization
+
+- src/lib/latex.js
+  * Removed \vspace{-7pt} from generateProjects()
+  * Added hyperlink support for project demo links
+
+- src/app/cv/page.js
+  * Added new "add" mode alongside "raw" and "structured"
+  * Added addContent and addType state variables
+  * Implemented addToExistingCV() UI function
+  * Added demo_link field to project form
+  * Added "Add to CV" button in header
+
+- src/app/api/resume/add/route.js (NEW FILE)
+  * POST endpoint for adding content to existing CV
+  * Validates input and calls addToExistingCV()
+
+HOW TO USE THE NEW FEATURES:
+=============================
+
+1. Add to Existing CV:
+   - Go to Master CV page
+   - Click "Add to CV" button
+   - Choose content type (auto/experience/project)
+   - Paste description of new job or project
+   - Click "Add to CV" - AI parses and adds it
+
+2. Add Demo Links to Projects:
+   - When editing projects, use the new "Demo/Live Link" field
+   - Enter URL (e.g., https://myproject.com)
+   - Link will appear in generated resume
+
+3. 1-Page Resume:
+   - When tailoring CV for a job, AI automatically:
+     * Selects only most relevant content
+     * Limits bullet points to 2-3 per entry
+     * Ensures final output fits on 1 page
+
+4. ATS Optimization:
+   - Paste job description when tailoring
+   - AI extracts and incorporates keywords
+   - Review skills section - may include new relevant keywords
+   - Bullet points optimized for ATS scanning
+
+All changes are backward compatible with existing CVs.

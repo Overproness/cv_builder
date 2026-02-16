@@ -4,20 +4,14 @@ import { useCallback, useState } from "react";
 
 /**
  * LaTeX compiler hook
- * Uses server-side compilation via /api/resume/pdf
- *
- * Note: Browser-based SwiftLaTeX engine was removed because all upstream
- * CDN/npm sources are permanently offline (swiftlatex.com, texlive.swiftlatex.com,
- * unpkg.com/swiftlatex-core). The npm package does not exist and the WASM files
- * require building from source with Emscripten. Server-side compilation is the
- * reliable approach.
+ * Uses server-side compilation via latex_server (hosted on Render.com)
+ * All LaTeX to PDF compilation is handled by the remote server.
  */
 export function useLatexCompiler() {
   const [isLoading] = useState(false);
-  const [isEngineReady] = useState(false);
+  const [isEngineReady] = useState(true); // Always ready since we use server
   const [loadingProgress] = useState("");
   const [error] = useState(null);
-  const [engineNotAvailable] = useState(true);
 
   /**
    * Compile LaTeX using server-side API
@@ -31,7 +25,7 @@ export function useLatexCompiler() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ latex: latexSource, source: "server" }),
+      body: JSON.stringify({ latex: latexSource }),
     });
 
     if (!response.ok) {
@@ -50,13 +44,12 @@ export function useLatexCompiler() {
 
     console.error("❌ Server did not return PDF");
     throw new Error(
-      "Server did not return a PDF. Make sure LATEX_SERVER_URL is configured.",
+      "Server did not return a PDF. Make sure LATEX_SERVER_URL and LATEX_SERVER_API_KEY are configured.",
     );
   }, []);
 
   /**
    * Compile LaTeX source code to PDF
-   * Uses server-side compilation since browser WASM engine is unavailable.
    * @param {string} latexSource - The LaTeX source code
    * @returns {Promise<{pdf: Blob, log: string, success: boolean}>}
    */
@@ -65,7 +58,7 @@ export function useLatexCompiler() {
       const blob = await compileLatexOnServer(latexSource);
       return {
         pdf: blob,
-        log: "Compiled via server",
+        log: "Compiled via latex_server",
         success: true,
       };
     },
@@ -77,7 +70,6 @@ export function useLatexCompiler() {
     compileLatexOnServer,
     isLoading,
     isEngineReady,
-    engineNotAvailable,
     loadingProgress,
     error,
   };

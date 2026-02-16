@@ -40,11 +40,9 @@ export default function TailorPage() {
 
   // LaTeX compiler hook
   const {
-    compileLatex,
     compileLatexOnServer,
     isLoading: engineLoading,
     isEngineReady,
-    engineNotAvailable,
     loadingProgress,
     error: engineError,
   } = useLatexCompiler();
@@ -162,24 +160,9 @@ export default function TailorPage() {
 
     setIsCompiling(true);
     try {
-      let pdfResult;
-
-      // Use browser-based compilation if available, otherwise use server
-      if (isEngineReady && !engineNotAvailable) {
-        console.log("Using browser-based LaTeX compilation");
-        const result = await compileLatex(tailoredLatex);
-
-        if (result.success && result.pdf) {
-          pdfResult = result.pdf;
-        } else {
-          console.warn("Browser compilation failed, falling back to server");
-          pdfResult = await compileLatexOnServer(tailoredLatex);
-        }
-      } else {
-        // Use server-side compilation
-        console.log("Using server-side LaTeX compilation");
-        pdfResult = await compileLatexOnServer(tailoredLatex);
-      }
+      // Use server-side compilation via latex_server
+      console.log("Using server-side LaTeX compilation");
+      const pdfResult = await compileLatexOnServer(tailoredLatex);
 
       if (pdfResult) {
         setPdfBlob(pdfResult);
@@ -495,11 +478,9 @@ Key Responsibilities:
                         </div>
 
                         <p className="text-xs text-muted-foreground mt-3">
-                          {isEngineReady && !engineNotAvailable
-                            ? "🚀 Browser-based LaTeX engine ready! Fast compilation in your browser."
-                            : engineNotAvailable
-                              ? "☁️ Using server-side compilation. May take a few seconds."
-                              : "⏳ Loading LaTeX engine... (Server fallback available)"}
+                          {isEngineReady
+                            ? "☁️ Using server-side compilation via latex_server."
+                            : "⏳ Initializing..."}
                         </p>
                       </div>
                     )}
