@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 /**
  * LaTeX compiler hook
  * Uses server-side compilation via /api/resume/pdf
- * 
+ *
  * Note: Browser-based SwiftLaTeX engine was removed because all upstream
  * CDN/npm sources are permanently offline (swiftlatex.com, texlive.swiftlatex.com,
  * unpkg.com/swiftlatex-core). The npm package does not exist and the WASM files
