@@ -50,6 +50,7 @@ export async function POST(request) {
         compiler: "pdflatex",
       }),
     });
+    console.log("🚀 ~ POST ~ response:", response);
 
     if (!response.ok) {
       const error = await response

@@ -61,26 +61,83 @@ export default function CVPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [cvId, setCvId] = useState(null);
+  const [allCVs, setAllCVs] = useState([]);
+  const [cvName, setCvName] = useState("");
 
   // Load existing CV on mount
   useEffect(() => {
-    fetchCV();
+    fetchAllCVs();
   }, []);
 
-  const fetchCV = async () => {
+  const fetchAllCVs = async () => {
     try {
-      const res = await fetch("/api/cv");
+      const res = await fetch("/api/cv?all=true");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setAllCVs(data);
+          // Load the most recent CV
+          await switchToCV(data[0]._id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching CVs:", error);
+    }
+  };
+
+  const switchToCV = async (id) => {
+    try {
+      const res = await fetch(`/api/cv?id=${id}`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.personal_info) {
           setCV(data);
           setCvId(data._id);
+          setCvName(data.cv_name || "");
           setMode("structured");
         }
       }
     } catch (error) {
-      console.error("Error fetching CV:", error);
+      console.error("Error loading CV:", error);
     }
+  };
+
+  const createNewCV = () => {
+    setCV(emptyCVTemplate);
+    setCvId(null);
+    setCvName("");
+    setMode("raw");
+    showMessage("Starting a new CV. Parse your resume to begin.", "success");
+  };
+
+  const deleteCV = async (id) => {
+    if (!confirm("Delete this CV? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/cv?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setAllCVs((prev) => prev.filter((c) => c._id !== id));
+        if (cvId === id) {
+          // Switch to another CV or reset
+          const remaining = allCVs.filter((c) => c._id !== id);
+          if (remaining.length > 0) {
+            await switchToCV(remaining[0]._id);
+          } else {
+            setCV(emptyCVTemplate);
+            setCvId(null);
+            setCvName("");
+            setMode("raw");
+          }
+        }
+        showMessage("CV deleted", "success");
+      }
+    } catch {
+      showMessage("Failed to delete CV", "error");
+    }
+  };
+
+  const fetchCV = async () => {
+    // legacy fallback
+    await fetchAllCVs();
   };
 
   const parseWithAI = async () => {
@@ -159,13 +216,18 @@ export default function CVPage() {
       const res = await fetch("/api/cv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...cv, _id: cvId }),
+        body: JSON.stringify({ ...cv, _id: cvId, cv_name: cvName || undefined }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        if (data.id) setCvId(data.id);
+        if (data.id) {
+          setCvId(data.id);
+          // Update allCVs list to reflect name changes
+          const summaryRes = await fetch("/api/cv?all=true");
+          if (summaryRes.ok) setAllCVs(await summaryRes.json());
+        }
         showMessage("CV saved successfully!", "success");
       } else {
         showMessage(data.error || "Failed to save CV", "error");
@@ -399,6 +461,71 @@ export default function CVPage() {
               </div>
             )}
           </div>
+
+          {/* CV Switcher Panel */}
+          <div className="mb-6 animate-[fade-in-up_0.3s_ease-out_forwards]">
+            <div className="flex items-center gap-3 mb-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Your CVs
+              </h2>
+              <div className="flex-1 h-px bg-border" />
+              <Button size="sm" variant="outline" onClick={createNewCV}>
+                <LuPlus className="mr-1.5 h-4 w-4" /> New CV
+              </Button>
+            </div>
+            {allCVs.length > 0 ? (
+              <div className="flex gap-2 flex-wrap">
+                {allCVs.map((c) => (
+                  <div
+                    key={c._id}
+                    className={`group flex items-center gap-2 px-4 py-2 rounded-lg border text-sm cursor-pointer transition-all ${
+                      cvId === c._id
+                        ? "border-primary bg-primary/10 text-primary font-medium"
+                        : "border-border bg-card hover:border-primary/50 hover:bg-primary/5"
+                    }`}
+                    onClick={() => switchToCV(c._id)}
+                  >
+                    <LuFileText className="h-4 w-4 shrink-0" />
+                    <span className="max-w-[160px] truncate">
+                      {c.cv_name ||
+                        (c.personal_info?.name
+                          ? `${c.personal_info.name}'s CV`
+                          : "Unnamed CV")}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteCV(c._id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 ml-1 p-0.5 rounded hover:text-destructive transition-all"
+                      title="Delete CV"
+                    >
+                      <LuTrash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                No CVs yet. Paste your resume below to get started.
+              </p>
+            )}
+          </div>
+
+          {/* CV Name Input (shown in structured mode) */}
+          {mode === "structured" && (
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={cvName}
+                  onChange={(e) => setCvName(e.target.value)}
+                  placeholder="Give this CV a name (e.g. Software Engineer CV, Research CV)..."
+                  className="w-full px-4 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                />
+              </div>
+            </div>
+          )}
 
           {mode === "add" ? (
             /* Add to Existing CV Mode */

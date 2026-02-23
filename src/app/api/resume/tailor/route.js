@@ -23,6 +23,26 @@ export async function POST(request) {
     
     // Tailor the CV for the job
     const tailoredCV = await tailorCVForJob(masterCV, jobDescription);
+
+    // Enforce strict 1-page limits on the tailored CV before generating LaTeX
+    // Cap experience to 3 entries with max 3 bullet points each
+    if (tailoredCV.experience) {
+      tailoredCV.experience = tailoredCV.experience.slice(0, 3).map((exp) => ({
+        ...exp,
+        points: (exp.points || []).slice(0, 3),
+      }));
+    }
+    // Cap projects to 3 entries with max 3 bullet points each
+    if (tailoredCV.projects) {
+      tailoredCV.projects = tailoredCV.projects.slice(0, 3).map((proj) => ({
+        ...proj,
+        points: (proj.points || []).slice(0, 3),
+      }));
+    }
+    // Cap education to 2 entries
+    if (tailoredCV.education) {
+      tailoredCV.education = tailoredCV.education.slice(0, 2);
+    }
     
     // Generate LaTeX from the tailored CV
     const latex = generateLatex(tailoredCV);
@@ -40,3 +60,4 @@ export async function POST(request) {
     );
   }
 }
+

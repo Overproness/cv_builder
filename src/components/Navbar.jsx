@@ -16,6 +16,7 @@ export function Navbar() {
   const navLinks = [
     { href: '/cv', label: 'Master CV' },
     { href: '/tailor', label: 'Tailor Resume' },
+    { href: '/documents', label: 'Documents' },
   ];
 
   const isActive = (path) => pathname === path;

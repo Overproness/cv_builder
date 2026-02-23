@@ -195,6 +195,91 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
 }
 
 /**
+ * Generate a personalized, job-tailored cover letter from a Master CV and Job Description
+ */
+export async function generateCoverLetter(masterCV, jobDescription, company = '', position = '') {
+  if (!model) {
+    throw new Error('Gemini API not configured. Please set GEMINI_API_KEY.');
+  }
+
+  const applicantName = masterCV?.personal_info?.name || 'Applicant';
+  const applicantEmail = masterCV?.personal_info?.email || '';
+  const applicantPhone = masterCV?.personal_info?.phone || '';
+
+  const prompt = `You are an expert career coach and professional writer. Generate a highly personalized, compelling cover letter for a job application.
+
+APPLICANT INFORMATION:
+${JSON.stringify(masterCV, null, 2)}
+
+JOB DETAILS:
+Company: ${company || 'the company'}
+Position: ${position || 'the position'}
+Job Description:
+${jobDescription}
+
+COVER LETTER REQUIREMENTS:
+1. Use a professional business letter format
+2. Opening line should immediately capture attention and mention the specific role
+3. Second paragraph: highlight 2-3 most relevant experiences/skills that match the job description
+4. Third paragraph: mention 1-2 specific, impressive projects or achievements from the CV that are relevant
+5. Fourth paragraph: show genuine enthusiasm for this specific company and role, mention something specific about why this company/role interests the applicant
+6. Closing: strong call to action, professional sign-off
+7. Keep it concise - MAXIMUM 4-5 paragraphs, around 300-380 words total
+8. Use specific numbers, metrics, and keywords from both the CV and job description
+9. Do NOT use generic filler phrases like "I am writing to express my interest..."
+10. Be direct, confident, and specific - make it feel unique to this person and this job
+11. The letter should feel natural and human-written, not AI-generated
+
+FORMAT THE OUTPUT EXACTLY AS FOLLOWS (plain text, use actual line breaks):
+[Today's date written as: Month DD, YYYY]
+
+[Company Name] Hiring Team
+[Company Name]
+
+Dear Hiring Manager,
+
+[Opening paragraph - strong hook about specific role/company]
+
+[Experience paragraph - 2-3 specific relevant experiences tied to job requirements]
+
+[Achievement/Project paragraph - 1-2 impressive specific projects/achievements]
+
+[Company enthusiasm paragraph - why this specific company/role is compelling]
+
+[Closing paragraph - call to action]
+
+Sincerely,
+${applicantName}
+${applicantEmail ? applicantEmail : ''}
+${applicantPhone ? applicantPhone : ''}
+
+OUTPUT (plain text cover letter, no markdown formatting, no code blocks, just the letter):`;
+
+  try {
+    const generationConfig = {
+      temperature: 0.7,
+      topP: 0.9,
+    };
+
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig,
+    });
+
+    const response = await result.response;
+    let text = response.text().trim();
+
+    // Remove any markdown code blocks if present
+    text = text.replace(/```[a-z]*\n?/g, '').replace(/```\n?/g, '').trim();
+
+    return text;
+  } catch (error) {
+    console.error('Error generating cover letter with Gemini:', error);
+    throw new Error('Failed to generate cover letter. Please try again.');
+  }
+}
+
+/**
  * Tailor a Master CV for a specific job description using block-based selection
  * This ensures consistent and deterministic results across multiple runs
  */

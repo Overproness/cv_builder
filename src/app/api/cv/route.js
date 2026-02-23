@@ -14,6 +14,7 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const all = searchParams.get('all');
     const userId = String(session.user.id);
     
     if (id) {
@@ -23,9 +24,14 @@ export async function GET(request) {
       }
       return NextResponse.json(cv);
     }
+
+    // Return all CVs if requested (for multi-CV selection)
+    if (all === 'true') {
+      const cvs = await CV.find({ userId }, { personal_info: 1, cv_name: 1, updatedAt: 1, createdAt: 1 }, { sort: { updatedAt: -1 } }).lean();
+      return NextResponse.json(cvs);
+    }
     
-    // Return all CVs for the user or the most recent one if preferred
-    // For now, let's keep the behavior of finding the most recent one for user
+    // Return most recent CV by default (backward compatibility)
     const cv = await CV.findOne({ userId }, {}, { sort: { updatedAt: -1 } });
     return NextResponse.json(cv || null);
   } catch (error) {
