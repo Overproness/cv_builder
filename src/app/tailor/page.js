@@ -8,12 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  downloadCoverLetterAsDocx,
+  printCoverLetterAsPdf,
+} from "@/lib/coverLetterUtils";
 import Editor from "@monaco-editor/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   LuArrowRight,
-  LuBookmark,
   LuBriefcase,
   LuCheck,
   LuCopy,
@@ -29,10 +32,6 @@ import {
   LuSave,
   LuSparkles,
 } from "react-icons/lu";
-import {
-  downloadCoverLetterAsDocx,
-  printCoverLetterAsPdf,
-} from "@/lib/coverLetterUtils";
 
 export default function TailorPage() {
   // CV management
@@ -155,7 +154,9 @@ export default function TailorPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ masterCV, jobDescription }),
-          }).then((r) => r.json().then((d) => ({ type: "resume", data: d, ok: r.ok })))
+          }).then((r) =>
+            r.json().then((d) => ({ type: "resume", data: d, ok: r.ok })),
+          ),
         );
       }
 
@@ -164,8 +165,15 @@ export default function TailorPage() {
           fetch("/api/cover-letter/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ masterCV, jobDescription, company, position }),
-          }).then((r) => r.json().then((d) => ({ type: "cl", data: d, ok: r.ok })))
+            body: JSON.stringify({
+              masterCV,
+              jobDescription,
+              company,
+              position,
+            }),
+          }).then((r) =>
+            r.json().then((d) => ({ type: "cl", data: d, ok: r.ok })),
+          ),
         );
       }
 
@@ -180,7 +188,10 @@ export default function TailorPage() {
             success = true;
             if (genResume && !genCoverLetter) setActiveTab("resume");
           } else {
-            showMessage(result.data.error || "Failed to tailor resume", "error");
+            showMessage(
+              result.data.error || "Failed to tailor resume",
+              "error",
+            );
           }
         } else if (result.type === "cl") {
           if (result.ok && result.data.content) {
@@ -188,7 +199,10 @@ export default function TailorPage() {
             success = true;
             if (!genResume && genCoverLetter) setActiveTab("coverletter");
           } else {
-            showMessage(result.data.error || "Failed to generate cover letter", "error");
+            showMessage(
+              result.data.error || "Failed to generate cover letter",
+              "error",
+            );
           }
         }
       }
@@ -212,7 +226,10 @@ export default function TailorPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: company && position ? `${position} at ${company}` : "Tailored Resume",
+          title:
+            company && position
+              ? `${position} at ${company}`
+              : "Tailored Resume",
           company,
           position,
           jobDescription,
@@ -243,7 +260,8 @@ export default function TailorPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: company && position ? `${position} at ${company}` : "Cover Letter",
+          title:
+            company && position ? `${position} at ${company}` : "Cover Letter",
           company,
           position,
           jobDescription,
@@ -404,11 +422,15 @@ export default function TailorPage() {
                 </h1>
               </div>
               <p className="text-muted-foreground">
-                Generate a tailored resume and personalized cover letter for any job
+                Generate a tailored resume and personalized cover letter for any
+                job
               </p>
             </div>
             <Link href="/documents">
-              <Button variant="outline" className="hidden sm:flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="hidden sm:flex items-center gap-2"
+              >
                 <LuFiles className="h-4 w-4" />
                 My Documents
               </Button>
@@ -422,10 +444,12 @@ export default function TailorPage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted mb-6">
                   <LuFileQuestion className="h-10 w-10 text-muted-foreground" />
                 </div>
-                <h2 className="text-2xl font-semibold mb-3">No Master CV Found</h2>
+                <h2 className="text-2xl font-semibold mb-3">
+                  No Master CV Found
+                </h2>
                 <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                  You need to create a Master CV before generating tailored resumes and cover
-                  letters.
+                  You need to create a Master CV before generating tailored
+                  resumes and cover letters.
                 </p>
                 <Link href="/cv">
                   <Button size="lg">
@@ -460,7 +484,11 @@ export default function TailorPage() {
                         ))}
                       </select>
                       <Link href="/cv">
-                        <Button variant="outline" size="icon" title="Manage CVs">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          title="Manage CVs"
+                        >
                           <LuFilePen className="h-4 w-4" />
                         </Button>
                       </Link>
@@ -498,7 +526,10 @@ export default function TailorPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="position" className="text-xs mb-1 block">
+                        <Label
+                          htmlFor="position"
+                          className="text-xs mb-1 block"
+                        >
                           Position
                         </Label>
                         <Input
@@ -543,7 +574,9 @@ export default function TailorPage() {
                         className="w-4 h-4 accent-primary"
                       />
                       <div>
-                        <p className="text-sm font-medium">Tailored Resume (LaTeX / PDF)</p>
+                        <p className="text-sm font-medium">
+                          Tailored Resume (LaTeX / PDF)
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           1-page, ATS-optimized, compile to PDF
                         </p>
@@ -557,9 +590,12 @@ export default function TailorPage() {
                         className="w-4 h-4 accent-primary"
                       />
                       <div>
-                        <p className="text-sm font-medium">Cover Letter (DOCX / PDF)</p>
+                        <p className="text-sm font-medium">
+                          Cover Letter (DOCX / PDF)
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          Personalized letter, editable, downloadable as Word or PDF
+                          Personalized letter, editable, downloadable as Word or
+                          PDF
                         </p>
                       </div>
                     </label>
@@ -599,9 +635,12 @@ export default function TailorPage() {
                       <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
                         <LuFileOutput className="h-10 w-10 text-muted-foreground" />
                       </div>
-                      <h3 className="text-xl font-semibold mb-2">Ready to Generate</h3>
+                      <h3 className="text-xl font-semibold mb-2">
+                        Ready to Generate
+                      </h3>
                       <p className="text-muted-foreground max-w-sm">
-                        Fill in the job details, choose what to generate, and click the button.
+                        Fill in the job details, choose what to generate, and
+                        click the button.
                       </p>
                     </CardContent>
                   </Card>
@@ -646,189 +685,228 @@ export default function TailorPage() {
                     )}
 
                     {/* ── RESUME PANEL ── */}
-                    {tailoredLatex && (activeTab === "resume" || !coverLetterContent) && (
-                      <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
-                        {/* Toolbar */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-semibold flex items-center gap-2 mr-auto">
-                            <LuFileOutput className="h-4 w-4 text-primary" />
-                            Tailored Resume (LaTeX)
-                          </span>
-                          <Button variant="outline" size="sm" onClick={openInOverleaf} title="Open in Overleaf">
-                            <LuExternalLink className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={copyToClipboard} title="Copy">
-                            {copied ? <LuCheck className="h-4 w-4 text-primary" /> : <LuCopy className="h-4 w-4" />}
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={downloadTeX} title="Download .tex">
-                            <LuDownload className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant={savedResumeId ? "outline" : "default"}
-                            size="sm"
-                            onClick={saveResume}
-                            disabled={savingResume || !!savedResumeId}
-                            title={savedResumeId ? "Saved" : "Save to account"}
-                          >
-                            {savingResume ? (
-                              <LuLoader className="h-4 w-4 animate-spin mr-1" />
-                            ) : savedResumeId ? (
-                              <LuCheck className="h-4 w-4 text-green-500 mr-1" />
-                            ) : (
-                              <LuSave className="h-4 w-4 mr-1" />
-                            )}
-                            {savedResumeId ? "Saved" : "Save"}
-                          </Button>
-                        </div>
-
-                        {/* Monaco Editor */}
-                        <div
-                          className="flex-1 border border-border rounded-lg overflow-hidden bg-[#1e1e1e]"
-                          style={{ minHeight: "300px" }}
-                        >
-                          <Editor
-                            height="100%"
-                            defaultLanguage="latex"
-                            value={tailoredLatex}
-                            onChange={(val) => setTailoredLatex(val || "")}
-                            theme="vs-dark"
-                            options={{
-                              minimap: { enabled: false },
-                              fontSize: 13,
-                              scrollBeyondLastLine: false,
-                              padding: { top: 12, bottom: 12 },
-                            }}
-                          />
-                        </div>
-
-                        {/* PDF section */}
-                        <div className="p-3 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
-                          <div className="flex flex-wrap gap-2 items-center">
-                            <span className="text-sm font-medium flex items-center gap-1 mr-auto">
-                              <LuFileText className="h-4 w-4" /> Compile &amp; Export PDF
+                    {tailoredLatex &&
+                      (activeTab === "resume" || !coverLetterContent) && (
+                        <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
+                          {/* Toolbar */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold flex items-center gap-2 mr-auto">
+                              <LuFileOutput className="h-4 w-4 text-primary" />
+                              Tailored Resume (LaTeX)
                             </span>
-                            {engineLoading && (
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                <LuLoader className="h-3 w-3 animate-spin" />
-                                {loadingProgress || "Loading..."}
-                              </span>
-                            )}
-                            <Button onClick={compilePdf} disabled={isCompiling} size="sm">
-                              {isCompiling ? (
-                                <>
-                                  <LuLoader className="animate-spin mr-1 h-3 w-3" />
-                                  Compiling...
-                                </>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={openInOverleaf}
+                              title="Open in Overleaf"
+                            >
+                              <LuExternalLink className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={copyToClipboard}
+                              title="Copy"
+                            >
+                              {copied ? (
+                                <LuCheck className="h-4 w-4 text-primary" />
                               ) : (
-                                <>
-                                  <LuSparkles className="mr-1 h-3 w-3" />
-                                  Compile PDF
-                                </>
+                                <LuCopy className="h-4 w-4" />
                               )}
                             </Button>
-                            {pdfBlob && (
-                              <>
-                                <Button variant="outline" size="sm" onClick={downloadPdf}>
-                                  <LuDownload className="mr-1 h-3 w-3" />
-                                  Download PDF
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={() => setShowPdfPreview(true)}>
-                                  <LuEye className="mr-1 h-3 w-3" />
-                                  Preview
-                                </Button>
-                              </>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={downloadTeX}
+                              title="Download .tex"
+                            >
+                              <LuDownload className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant={savedResumeId ? "outline" : "default"}
+                              size="sm"
+                              onClick={saveResume}
+                              disabled={savingResume || !!savedResumeId}
+                              title={
+                                savedResumeId ? "Saved" : "Save to account"
+                              }
+                            >
+                              {savingResume ? (
+                                <LuLoader className="h-4 w-4 animate-spin mr-1" />
+                              ) : savedResumeId ? (
+                                <LuCheck className="h-4 w-4 text-green-500 mr-1" />
+                              ) : (
+                                <LuSave className="h-4 w-4 mr-1" />
+                              )}
+                              {savedResumeId ? "Saved" : "Save"}
+                            </Button>
+                          </div>
+
+                          {/* Monaco Editor */}
+                          <div
+                            className="flex-1 border border-border rounded-lg overflow-hidden bg-[#1e1e1e]"
+                            style={{ minHeight: "300px" }}
+                          >
+                            <Editor
+                              height="100%"
+                              defaultLanguage="latex"
+                              value={tailoredLatex}
+                              onChange={(val) => setTailoredLatex(val || "")}
+                              theme="vs-dark"
+                              options={{
+                                minimap: { enabled: false },
+                                fontSize: 13,
+                                scrollBeyondLastLine: false,
+                                padding: { top: 12, bottom: 12 },
+                              }}
+                            />
+                          </div>
+
+                          {/* PDF section */}
+                          <div className="p-3 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <span className="text-sm font-medium flex items-center gap-1 mr-auto">
+                                <LuFileText className="h-4 w-4" /> Compile &amp;
+                                Export PDF
+                              </span>
+                              {engineLoading && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <LuLoader className="h-3 w-3 animate-spin" />
+                                  {loadingProgress || "Loading..."}
+                                </span>
+                              )}
+                              <Button
+                                onClick={compilePdf}
+                                disabled={isCompiling}
+                                size="sm"
+                              >
+                                {isCompiling ? (
+                                  <>
+                                    <LuLoader className="animate-spin mr-1 h-3 w-3" />
+                                    Compiling...
+                                  </>
+                                ) : (
+                                  <>
+                                    <LuSparkles className="mr-1 h-3 w-3" />
+                                    Compile PDF
+                                  </>
+                                )}
+                              </Button>
+                              {pdfBlob && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={downloadPdf}
+                                  >
+                                    <LuDownload className="mr-1 h-3 w-3" />
+                                    Download PDF
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowPdfPreview(true)}
+                                  >
+                                    <LuEye className="mr-1 h-3 w-3" />
+                                    Preview
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                            {savedResumeId && (
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+                                <LuCheck className="h-3 w-3" /> Saved —{" "}
+                                <Link href="/documents" className="underline">
+                                  View in My Documents
+                                </Link>
+                              </p>
                             )}
                           </div>
-                          {savedResumeId && (
-                            <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+                        </div>
+                      )}
+
+                    {/* ── COVER LETTER PANEL ── */}
+                    {coverLetterContent &&
+                      (activeTab === "coverletter" || !tailoredLatex) && (
+                        <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
+                          {/* Toolbar */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold flex items-center gap-2 mr-auto">
+                              <LuFilePen className="h-4 w-4 text-primary" />
+                              Cover Letter
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                downloadCoverLetterAsDocx(
+                                  coverLetterContent,
+                                  `cover-letter-${company || "application"}`,
+                                )
+                              }
+                              title="Download as Word (.docx)"
+                            >
+                              <LuDownload className="h-4 w-4 mr-1" />
+                              DOCX
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                printCoverLetterAsPdf(
+                                  coverLetterContent,
+                                  masterCV?.personal_info?.name,
+                                )
+                              }
+                              title="Print / Save as PDF"
+                            >
+                              <LuFileText className="h-4 w-4 mr-1" />
+                              PDF
+                            </Button>
+                            <Button
+                              variant={savedCLId ? "outline" : "default"}
+                              size="sm"
+                              onClick={saveCoverLetter}
+                              disabled={savingCL || !!savedCLId}
+                              title={savedCLId ? "Saved" : "Save to account"}
+                            >
+                              {savingCL ? (
+                                <LuLoader className="h-4 w-4 animate-spin mr-1" />
+                              ) : savedCLId ? (
+                                <LuCheck className="h-4 w-4 text-green-500 mr-1" />
+                              ) : (
+                                <LuSave className="h-4 w-4 mr-1" />
+                              )}
+                              {savedCLId ? "Saved" : "Save"}
+                            </Button>
+                          </div>
+
+                          {/* Editable textarea */}
+                          <textarea
+                            value={coverLetterContent}
+                            onChange={(e) =>
+                              setCoverLetterContent(e.target.value)
+                            }
+                            className="flex-1 w-full rounded-lg border border-border bg-background p-4 text-sm font-mono leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                            style={{ minHeight: "400px" }}
+                            spellCheck={true}
+                          />
+
+                          {savedCLId ? (
+                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                               <LuCheck className="h-3 w-3" /> Saved —{" "}
                               <Link href="/documents" className="underline">
                                 View in My Documents
                               </Link>
                             </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              ✏️ Edit the cover letter above before saving or
+                              downloading.
+                            </p>
                           )}
                         </div>
-                      </div>
-                    )}
-
-                    {/* ── COVER LETTER PANEL ── */}
-                    {coverLetterContent && (activeTab === "coverletter" || !tailoredLatex) && (
-                      <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
-                        {/* Toolbar */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-semibold flex items-center gap-2 mr-auto">
-                            <LuFilePen className="h-4 w-4 text-primary" />
-                            Cover Letter
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              downloadCoverLetterAsDocx(
-                                coverLetterContent,
-                                `cover-letter-${company || "application"}`
-                              )
-                            }
-                            title="Download as Word (.docx)"
-                          >
-                            <LuDownload className="h-4 w-4 mr-1" />
-                            DOCX
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              printCoverLetterAsPdf(
-                                coverLetterContent,
-                                masterCV?.personal_info?.name
-                              )
-                            }
-                            title="Print / Save as PDF"
-                          >
-                            <LuFileText className="h-4 w-4 mr-1" />
-                            PDF
-                          </Button>
-                          <Button
-                            variant={savedCLId ? "outline" : "default"}
-                            size="sm"
-                            onClick={saveCoverLetter}
-                            disabled={savingCL || !!savedCLId}
-                            title={savedCLId ? "Saved" : "Save to account"}
-                          >
-                            {savingCL ? (
-                              <LuLoader className="h-4 w-4 animate-spin mr-1" />
-                            ) : savedCLId ? (
-                              <LuCheck className="h-4 w-4 text-green-500 mr-1" />
-                            ) : (
-                              <LuSave className="h-4 w-4 mr-1" />
-                            )}
-                            {savedCLId ? "Saved" : "Save"}
-                          </Button>
-                        </div>
-
-                        {/* Editable textarea */}
-                        <textarea
-                          value={coverLetterContent}
-                          onChange={(e) => setCoverLetterContent(e.target.value)}
-                          className="flex-1 w-full rounded-lg border border-border bg-background p-4 text-sm font-mono leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                          style={{ minHeight: "400px" }}
-                          spellCheck={true}
-                        />
-
-                        {savedCLId ? (
-                          <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                            <LuCheck className="h-3 w-3" /> Saved —{" "}
-                            <Link href="/documents" className="underline">
-                              View in My Documents
-                            </Link>
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            ✏️ Edit the cover letter above before saving or downloading.
-                          </p>
-                        )}
-                      </div>
-                    )}
+                      )}
                   </Card>
                 )}
               </div>

@@ -197,14 +197,19 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
 /**
  * Generate a personalized, job-tailored cover letter from a Master CV and Job Description
  */
-export async function generateCoverLetter(masterCV, jobDescription, company = '', position = '') {
+export async function generateCoverLetter(
+  masterCV,
+  jobDescription,
+  company = "",
+  position = "",
+) {
   if (!model) {
-    throw new Error('Gemini API not configured. Please set GEMINI_API_KEY.');
+    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
   }
 
-  const applicantName = masterCV?.personal_info?.name || 'Applicant';
-  const applicantEmail = masterCV?.personal_info?.email || '';
-  const applicantPhone = masterCV?.personal_info?.phone || '';
+  const applicantName = masterCV?.personal_info?.name || "Applicant";
+  const applicantEmail = masterCV?.personal_info?.email || "";
+  const applicantPhone = masterCV?.personal_info?.phone || "";
 
   const prompt = `You are an expert career coach and professional writer. Generate a highly personalized, compelling cover letter for a job application.
 
@@ -212,8 +217,8 @@ APPLICANT INFORMATION:
 ${JSON.stringify(masterCV, null, 2)}
 
 JOB DETAILS:
-Company: ${company || 'the company'}
-Position: ${position || 'the position'}
+Company: ${company || "the company"}
+Position: ${position || "the position"}
 Job Description:
 ${jobDescription}
 
@@ -250,8 +255,8 @@ Dear Hiring Manager,
 
 Sincerely,
 ${applicantName}
-${applicantEmail ? applicantEmail : ''}
-${applicantPhone ? applicantPhone : ''}
+${applicantEmail ? applicantEmail : ""}
+${applicantPhone ? applicantPhone : ""}
 
 OUTPUT (plain text cover letter, no markdown formatting, no code blocks, just the letter):`;
 
@@ -262,7 +267,7 @@ OUTPUT (plain text cover letter, no markdown formatting, no code blocks, just th
     };
 
     const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig,
     });
 
@@ -270,12 +275,15 @@ OUTPUT (plain text cover letter, no markdown formatting, no code blocks, just th
     let text = response.text().trim();
 
     // Remove any markdown code blocks if present
-    text = text.replace(/```[a-z]*\n?/g, '').replace(/```\n?/g, '').trim();
+    text = text
+      .replace(/```[a-z]*\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
 
     return text;
   } catch (error) {
-    console.error('Error generating cover letter with Gemini:', error);
-    throw new Error('Failed to generate cover letter. Please try again.');
+    console.error("Error generating cover letter with Gemini:", error);
+    throw new Error("Failed to generate cover letter. Please try again.");
   }
 }
 

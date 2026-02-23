@@ -8,17 +8,27 @@
  * @param {string} content - Plain text cover letter content
  * @param {string} filename - Output filename (without extension)
  */
-export async function downloadCoverLetterAsDocx(content, filename = 'cover-letter') {
-  const { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, convertInchesToTwip } =
-    await import('docx');
+export async function downloadCoverLetterAsDocx(
+  content,
+  filename = "cover-letter",
+) {
+  const {
+    Document,
+    Packer,
+    Paragraph,
+    TextRun,
+    AlignmentType,
+    HeadingLevel,
+    convertInchesToTwip,
+  } = await import("docx");
 
   // Split content into paragraphs by double newlines or single newlines
   const rawParagraphs = content.split(/\n/).map((p) => p.trim());
 
   const docParagraphs = rawParagraphs.map((text) => {
-    if (text === '') {
+    if (text === "") {
       // Empty paragraph as spacer
-      return new Paragraph({ text: '', spacing: { after: 120 } });
+      return new Paragraph({ text: "", spacing: { after: 120 } });
     }
 
     return new Paragraph({
@@ -26,7 +36,7 @@ export async function downloadCoverLetterAsDocx(content, filename = 'cover-lette
         new TextRun({
           text,
           size: 24, // 12pt
-          font: 'Calibri',
+          font: "Calibri",
         }),
       ],
       spacing: { after: 120, line: 276 }, // 1.15 line spacing
@@ -53,7 +63,7 @@ export async function downloadCoverLetterAsDocx(content, filename = 'cover-lette
       default: {
         document: {
           run: {
-            font: 'Calibri',
+            font: "Calibri",
             size: 24,
           },
           paragraph: {
@@ -66,7 +76,7 @@ export async function downloadCoverLetterAsDocx(content, filename = 'cover-lette
 
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = `${filename}.docx`;
   document.body.appendChild(a);
@@ -78,10 +88,10 @@ export async function downloadCoverLetterAsDocx(content, filename = 'cover-lette
 /**
  * Download cover letter as plain text (.txt)
  */
-export function downloadCoverLetterAsTxt(content, filename = 'cover-letter') {
-  const blob = new Blob([content], { type: 'text/plain' });
+export function downloadCoverLetterAsTxt(content, filename = "cover-letter") {
+  const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = `${filename}.txt`;
   document.body.appendChild(a);
@@ -93,21 +103,23 @@ export function downloadCoverLetterAsTxt(content, filename = 'cover-letter') {
 /**
  * Print / save as PDF via browser print dialog
  */
-export function printCoverLetterAsPdf(content, applicantName = '') {
-  const printWindow = window.open('', '_blank');
+export function printCoverLetterAsPdf(content, applicantName = "") {
+  const printWindow = window.open("", "_blank");
   if (!printWindow) return;
 
   const htmlContent = content
-    .split('\n')
+    .split("\n")
     .map((line) =>
-      line.trim() === '' ? '<br/>' : `<p style="margin:0 0 6px 0;">${escapeHtml(line)}</p>`
+      line.trim() === ""
+        ? "<br/>"
+        : `<p style="margin:0 0 6px 0;">${escapeHtml(line)}</p>`,
     )
-    .join('');
+    .join("");
 
   printWindow.document.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>Cover Letter${applicantName ? ' - ' + applicantName : ''}</title>
+  <title>Cover Letter${applicantName ? " - " + applicantName : ""}</title>
   <style>
     body {
       font-family: Calibri, Arial, sans-serif;
@@ -132,9 +144,9 @@ export function printCoverLetterAsPdf(content, applicantName = '') {
 
 function escapeHtml(text) {
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

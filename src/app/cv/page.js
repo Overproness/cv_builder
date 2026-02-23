@@ -216,7 +216,11 @@ export default function CVPage() {
       const res = await fetch("/api/cv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...cv, _id: cvId, cv_name: cvName || undefined }),
+        body: JSON.stringify({
+          ...cv,
+          _id: cvId,
+          cv_name: cvName || undefined,
+        }),
       });
 
       const data = await res.json();

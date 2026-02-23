@@ -1,45 +1,45 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const CoverLetterSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
     masterCVId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'CV',
+      ref: "CV",
       default: null,
     },
     resumeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Resume',
+      ref: "Resume",
       default: null,
     },
     title: {
       type: String,
-      default: 'Untitled Cover Letter',
+      default: "Untitled Cover Letter",
     },
     company: {
       type: String,
-      default: '',
+      default: "",
     },
     position: {
       type: String,
-      default: '',
+      default: "",
     },
     jobDescription: {
       type: String,
-      default: '',
+      default: "",
     },
     content: {
       type: String,
-      default: '',
+      default: "",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.models.CoverLetter ||
-  mongoose.model('CoverLetter', CoverLetterSchema, 'cover_letters');
+  mongoose.model("CoverLetter", CoverLetterSchema, "cover_letters");

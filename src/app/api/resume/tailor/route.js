@@ -1,26 +1,26 @@
-import { tailorCVForJob } from '@/lib/gemini';
-import { generateLatex } from '@/lib/latex';
-import { NextResponse } from 'next/server';
+import { tailorCVForJob } from "@/lib/gemini";
+import { generateLatex } from "@/lib/latex";
+import { NextResponse } from "next/server";
 
 // POST - Generate tailored resume from Master CV + Job Description
 export async function POST(request) {
   try {
     const { masterCV, jobDescription } = await request.json();
-    
+
     if (!masterCV) {
       return NextResponse.json(
-        { error: 'Master CV is required' }, 
-        { status: 400 }
+        { error: "Master CV is required" },
+        { status: 400 },
       );
     }
-    
+
     if (!jobDescription || jobDescription.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Job description is required' }, 
-        { status: 400 }
+        { error: "Job description is required" },
+        { status: 400 },
       );
     }
-    
+
     // Tailor the CV for the job
     const tailoredCV = await tailorCVForJob(masterCV, jobDescription);
 
@@ -43,21 +43,20 @@ export async function POST(request) {
     if (tailoredCV.education) {
       tailoredCV.education = tailoredCV.education.slice(0, 2);
     }
-    
+
     // Generate LaTeX from the tailored CV
     const latex = generateLatex(tailoredCV);
-    
+
     return NextResponse.json({
-      message: 'Resume tailored successfully',
+      message: "Resume tailored successfully",
       tailoredCV,
-      latex
+      latex,
     });
   } catch (error) {
-    console.error('Error tailoring resume:', error);
+    console.error("Error tailoring resume:", error);
     return NextResponse.json(
-      { error: error.message || 'Failed to tailor resume' }, 
-      { status: 500 }
+      { error: error.message || "Failed to tailor resume" },
+      { status: 500 },
     );
   }
 }
-

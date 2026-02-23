@@ -1,43 +1,44 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const ResumeSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
     masterCVId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'CV',
+      ref: "CV",
       default: null,
     },
     title: {
       type: String,
-      default: 'Untitled Resume',
+      default: "Untitled Resume",
     },
     company: {
       type: String,
-      default: '',
+      default: "",
     },
     position: {
       type: String,
-      default: '',
+      default: "",
     },
     jobDescription: {
       type: String,
-      default: '',
+      default: "",
     },
     latex: {
       type: String,
-      default: '',
+      default: "",
     },
     tailoredCV: {
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export default mongoose.models.Resume || mongoose.model('Resume', ResumeSchema, 'resumes');
+export default mongoose.models.Resume ||
+  mongoose.model("Resume", ResumeSchema, "resumes");

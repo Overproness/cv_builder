@@ -6,6 +6,10 @@ import { Navbar } from "@/components/Navbar";
 import PdfPreview from "@/components/PdfPreview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  downloadCoverLetterAsDocx,
+  printCoverLetterAsPdf,
+} from "@/lib/coverLetterUtils";
 import Editor from "@monaco-editor/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -25,10 +29,6 @@ import {
   LuTrash2,
   LuX,
 } from "react-icons/lu";
-import {
-  downloadCoverLetterAsDocx,
-  printCoverLetterAsPdf,
-} from "@/lib/coverLetterUtils";
 
 export default function DocumentsPage() {
   const [activeTab, setActiveTab] = useState("resumes");
@@ -167,8 +167,8 @@ export default function DocumentsPage() {
       if (res.ok) {
         setCoverLetters((prev) =>
           prev.map((cl) =>
-            cl._id === viewingCL._id ? { ...cl, content: editedCLContent } : cl
-          )
+            cl._id === viewingCL._id ? { ...cl, content: editedCLContent } : cl,
+          ),
         );
         setViewingCL({ ...viewingCL, content: editedCLContent });
         showMessage("Cover letter updated!", "success");
@@ -227,14 +227,25 @@ export default function DocumentsPage() {
                 <div>
                   <h2 className="font-semibold">{viewingResume.title}</h2>
                   {viewingResume.company && (
-                    <p className="text-sm text-muted-foreground">{viewingResume.company}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {viewingResume.company}
+                    </p>
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => downloadTeX(viewingResume)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadTeX(viewingResume)}
+                  >
                     <LuDownload className="h-4 w-4 mr-1" /> .tex
                   </Button>
-                  <Button variant="outline" size="sm" onClick={compilePdf} disabled={isCompiling}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={compilePdf}
+                    disabled={isCompiling}
+                  >
                     {isCompiling ? (
                       <LuLoader className="h-4 w-4 animate-spin mr-1" />
                     ) : (
@@ -247,7 +258,11 @@ export default function DocumentsPage() {
                       <LuDownload className="h-4 w-4 mr-1" /> PDF
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" onClick={() => setViewingResume(null)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewingResume(null)}
+                  >
                     <LuX className="h-4 w-4" />
                   </Button>
                 </div>
@@ -283,7 +298,8 @@ export default function DocumentsPage() {
                   <h2 className="font-semibold">{viewingCL.title}</h2>
                   {viewingCL.company && (
                     <p className="text-sm text-muted-foreground">
-                      {viewingCL.position ? `${viewingCL.position} @ ` : ""}{viewingCL.company}
+                      {viewingCL.position ? `${viewingCL.position} @ ` : ""}
+                      {viewingCL.company}
                     </p>
                   )}
                 </div>
@@ -294,7 +310,7 @@ export default function DocumentsPage() {
                     onClick={() =>
                       downloadCoverLetterAsDocx(
                         editedCLContent,
-                        viewingCL.title || "cover-letter"
+                        viewingCL.title || "cover-letter",
                       )
                     }
                   >
@@ -320,7 +336,11 @@ export default function DocumentsPage() {
                     )}
                     Save Edits
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setViewingCL(null)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewingCL(null)}
+                  >
                     <LuX className="h-4 w-4" />
                   </Button>
                 </div>
@@ -334,7 +354,8 @@ export default function DocumentsPage() {
                   spellCheck={true}
                 />
                 <p className="text-xs text-muted-foreground mt-2">
-                  ✏️ Edit the cover letter above, then click "Save Edits" to update.
+                  ✏️ Edit the cover letter above, then click "Save Edits" to
+                  update.
                 </p>
               </div>
             </div>
@@ -403,7 +424,9 @@ export default function DocumentsPage() {
             /* ── RESUMES TAB ── */
             resumes.length === 0 ? (
               <EmptyState
-                icon={<LuFileText className="h-10 w-10 text-muted-foreground" />}
+                icon={
+                  <LuFileText className="h-10 w-10 text-muted-foreground" />
+                }
                 title="No Saved Resumes"
                 description="Generate and save a tailored resume to see it here."
                 action={
@@ -434,41 +457,45 @@ export default function DocumentsPage() {
                 ))}
               </div>
             )
+          ) : /* ── COVER LETTERS TAB ── */
+          coverLetters.length === 0 ? (
+            <EmptyState
+              icon={<LuFilePen className="h-10 w-10 text-muted-foreground" />}
+              title="No Saved Cover Letters"
+              description="Generate and save a cover letter to see it here."
+              action={
+                <Link href="/tailor">
+                  <Button>
+                    Create Cover Letter{" "}
+                    <LuArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              }
+            />
           ) : (
-            /* ── COVER LETTERS TAB ── */
-            coverLetters.length === 0 ? (
-              <EmptyState
-                icon={<LuFilePen className="h-10 w-10 text-muted-foreground" />}
-                title="No Saved Cover Letters"
-                description="Generate and save a cover letter to see it here."
-                action={
-                  <Link href="/tailor">
-                    <Button>
-                      Create Cover Letter <LuArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                }
-              />
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {coverLetters.map((cl) => (
-                  <DocumentCard
-                    key={cl._id}
-                    icon={<LuFilePen className="h-5 w-5 text-primary" />}
-                    title={cl.title}
-                    company={cl.company}
-                    position={cl.position}
-                    date={cl.createdAt}
-                    formatDate={formatDate}
-                    onView={() => openCoverLetter(cl)}
-                    onDownload={() => downloadCoverLetterAsDocx(cl.content, cl.title || "cover-letter")}
-                    onDelete={() => deleteCoverLetter(cl._id)}
-                    viewLabel="View & Edit"
-                    downloadLabel="DOCX"
-                  />
-                ))}
-              </div>
-            )
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {coverLetters.map((cl) => (
+                <DocumentCard
+                  key={cl._id}
+                  icon={<LuFilePen className="h-5 w-5 text-primary" />}
+                  title={cl.title}
+                  company={cl.company}
+                  position={cl.position}
+                  date={cl.createdAt}
+                  formatDate={formatDate}
+                  onView={() => openCoverLetter(cl)}
+                  onDownload={() =>
+                    downloadCoverLetterAsDocx(
+                      cl.content,
+                      cl.title || "cover-letter",
+                    )
+                  }
+                  onDelete={() => deleteCoverLetter(cl._id)}
+                  viewLabel="View & Edit"
+                  downloadLabel="DOCX"
+                />
+              ))}
+            </div>
           )}
         </div>
       </main>
@@ -499,7 +526,9 @@ function DocumentCard({
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               {icon}
             </div>
-            <CardTitle className="text-sm font-semibold truncate">{title}</CardTitle>
+            <CardTitle className="text-sm font-semibold truncate">
+              {title}
+            </CardTitle>
           </div>
           <Button
             variant="ghost"
@@ -517,7 +546,9 @@ function DocumentCard({
           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
             <LuBuilding2 className="h-3 w-3" />
             <span className="truncate">
-              {position && company ? `${position} @ ${company}` : company || position}
+              {position && company
+                ? `${position} @ ${company}`
+                : company || position}
             </span>
           </div>
         )}
@@ -526,7 +557,12 @@ function DocumentCard({
           <span>{formatDate(date)}</span>
         </div>
         <div className="flex gap-2">
-          <Button variant="default" size="sm" className="flex-1" onClick={onView}>
+          <Button
+            variant="default"
+            size="sm"
+            className="flex-1"
+            onClick={onView}
+          >
             <LuEye className="h-4 w-4 mr-1" />
             {viewLabel}
           </Button>
