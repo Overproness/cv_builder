@@ -18,7 +18,8 @@ export async function GET() {
     const user = await User.findById(String(session.user.id)).select(
       "name email settings",
     );
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!user)
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     return NextResponse.json({
       name: user.name,
@@ -27,7 +28,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Error fetching settings:", error);
-    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch settings" },
+      { status: 500 },
+    );
   }
 }
 
@@ -44,7 +48,8 @@ export async function PATCH(request) {
     const update = {};
     if (displayName !== undefined) update["settings.displayName"] = displayName;
     if (phone !== undefined) update["settings.phone"] = phone;
-    if (coverLetterEmail !== undefined) update["settings.coverLetterEmail"] = coverLetterEmail;
+    if (coverLetterEmail !== undefined)
+      update["settings.coverLetterEmail"] = coverLetterEmail;
     if (coverLetterWordCount !== undefined)
       update["settings.coverLetterWordCount"] = Number(coverLetterWordCount);
 
@@ -62,6 +67,9 @@ export async function PATCH(request) {
     });
   } catch (error) {
     console.error("Error updating settings:", error);
-    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update settings" },
+      { status: 500 },
+    );
   }
 }

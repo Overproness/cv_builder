@@ -135,11 +135,19 @@ export default function SettingsPage() {
             <CardContent className="pt-0 grid gap-3">
               <div>
                 <Label className="text-xs mb-1 block">Account name</Label>
-                <Input value={authName} disabled className="bg-muted/40 h-9 text-sm" />
+                <Input
+                  value={authName}
+                  disabled
+                  className="bg-muted/40 h-9 text-sm"
+                />
               </div>
               <div>
                 <Label className="text-xs mb-1 block">Account email</Label>
-                <Input value={authEmail} disabled className="bg-muted/40 h-9 text-sm" />
+                <Input
+                  value={authEmail}
+                  disabled
+                  className="bg-muted/40 h-9 text-sm"
+                />
               </div>
             </CardContent>
           </Card>
@@ -147,9 +155,7 @@ export default function SettingsPage() {
           {/* Cover Letter Defaults */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                Cover Letter Defaults
-              </CardTitle>
+              <CardTitle className="text-base">Cover Letter Defaults</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
                 These values are used in the header of every cover letter you
                 generate.
@@ -199,7 +205,9 @@ export default function SettingsPage() {
               <div>
                 <Label htmlFor="wordCount" className="text-xs mb-1 block">
                   Default cover letter word count{" "}
-                  <span className="text-muted-foreground">(body content only)</span>
+                  <span className="text-muted-foreground">
+                    (body content only)
+                  </span>
                 </Label>
                 <Input
                   id="wordCount"
@@ -216,7 +224,11 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full sm:w-auto"
+              >
                 {saving ? (
                   <>
                     <LuLoader className="animate-spin mr-2 h-4 w-4" />

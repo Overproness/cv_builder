@@ -120,8 +120,14 @@ export function Navbar() {
                   <div className="h-10 animate-pulse bg-muted rounded-lg" />
                 ) : session ? (
                   <>
-                    <Link href="/settings" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start gap-2">
+                    <Link
+                      href="/settings"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-2"
+                      >
                         <LuSettings className="h-4 w-4" />
                         Settings
                       </Button>

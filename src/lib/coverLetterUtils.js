@@ -70,13 +70,8 @@ export async function downloadCoverLetterAsDocx(
   content,
   filename = "cover-letter",
 ) {
-  const {
-    Document,
-    Packer,
-    Paragraph,
-    TextRun,
-    convertInchesToTwip,
-  } = await import("docx");
+  const { Document, Packer, Paragraph, TextRun, convertInchesToTwip } =
+    await import("docx");
 
   const lines = content.split("\n");
   const docParagraphs = [];
@@ -90,8 +85,13 @@ export async function downloadCoverLetterAsDocx(
     const trimmed = lines[i].trim();
 
     // Detect zone transitions
-    if (/^Dear Hiring Manager/i.test(trimmed)) { zone = "body"; seenDear = true; }
-    else if (/^Sincerely[,.]?$/i.test(trimmed)) { seenSincerely = true; zone = "footer"; }
+    if (/^Dear Hiring Manager/i.test(trimmed)) {
+      zone = "body";
+      seenDear = true;
+    } else if (/^Sincerely[,.]?$/i.test(trimmed)) {
+      seenSincerely = true;
+      zone = "footer";
+    }
 
     // ── Applicant name (first non-blank line) ──────────────────────────────
     if (zone === "header-name") {
@@ -100,7 +100,14 @@ export async function downloadCoverLetterAsDocx(
       } else {
         docParagraphs.push(
           new Paragraph({
-            children: [new TextRun({ text: trimmed, bold: true, size: 36, font: "Calibri" })],
+            children: [
+              new TextRun({
+                text: trimmed,
+                bold: true,
+                size: 36,
+                font: "Calibri",
+              }),
+            ],
             spacing: { after: 60 },
           }),
         );
@@ -116,7 +123,14 @@ export async function downloadCoverLetterAsDocx(
       } else {
         docParagraphs.push(
           new Paragraph({
-            children: [new TextRun({ text: trimmed, size: 22, font: "Calibri", color: "555555" })],
+            children: [
+              new TextRun({
+                text: trimmed,
+                size: 22,
+                font: "Calibri",
+                color: "555555",
+              }),
+            ],
             spacing: { after: 60 },
           }),
         );
@@ -131,7 +145,9 @@ export async function downloadCoverLetterAsDocx(
       } else {
         docParagraphs.push(
           new Paragraph({
-            children: [new TextRun({ text: trimmed, size: 24, font: "Calibri" })],
+            children: [
+              new TextRun({ text: trimmed, size: 24, font: "Calibri" }),
+            ],
             spacing: { after: 100, line: 276 },
           }),
         );
@@ -146,7 +162,9 @@ export async function downloadCoverLetterAsDocx(
       } else {
         docParagraphs.push(
           new Paragraph({
-            children: [new TextRun({ text: trimmed, size: 24, font: "Calibri" })],
+            children: [
+              new TextRun({ text: trimmed, size: 24, font: "Calibri" }),
+            ],
             spacing: { after: 80 },
           }),
         );
@@ -159,7 +177,14 @@ export async function downloadCoverLetterAsDocx(
       trimmed === ""
         ? new Paragraph({ text: "", spacing: { after: 80 } })
         : new Paragraph({
-            children: [new TextRun({ text: trimmed, size: 22, font: "Calibri", color: "555555" })],
+            children: [
+              new TextRun({
+                text: trimmed,
+                size: 22,
+                font: "Calibri",
+                color: "555555",
+              }),
+            ],
             spacing: { after: 60 },
           }),
     );

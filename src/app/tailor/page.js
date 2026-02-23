@@ -228,8 +228,12 @@ export default function TailorPage() {
           if (result.ok && result.data.content) {
             // Assemble full formatted letter: header (from user settings) + body (from AI)
             const assembled = assembleCoverLetter({
-              name: userSettings.displayName || masterCV?.personal_info?.name || "",
-              email: userSettings.coverLetterEmail || masterCV?.personal_info?.email || "",
+              name:
+                userSettings.displayName || masterCV?.personal_info?.name || "",
+              email:
+                userSettings.coverLetterEmail ||
+                masterCV?.personal_info?.email ||
+                "",
               phone: userSettings.phone || masterCV?.personal_info?.phone || "",
               company: company || "",
               body: result.data.content,
@@ -666,7 +670,10 @@ export default function TailorPage() {
                     {genCoverLetter && (
                       <p className="text-xs text-muted-foreground px-2">
                         Name, email &amp; phone are pulled from{" "}
-                        <Link href="/settings" className="underline text-primary">
+                        <Link
+                          href="/settings"
+                          className="underline text-primary"
+                        >
                           Settings
                         </Link>
                         .
@@ -915,7 +922,10 @@ export default function TailorPage() {
                                 const win = window.open("", "_blank");
                                 if (win) {
                                   win.document.write(
-                                    renderCoverLetterHtml(coverLetterContent, false),
+                                    renderCoverLetterHtml(
+                                      coverLetterContent,
+                                      false,
+                                    ),
                                   );
                                   win.document.close();
                                 }
