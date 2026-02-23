@@ -2,11 +2,11 @@
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LuMenu, LuX } from "react-icons/lu";
+import { LuMenu, LuSettings, LuX } from "react-icons/lu";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -54,6 +54,11 @@ export function Navbar() {
               <div className="h-10 w-24 animate-pulse bg-muted rounded-lg" />
             ) : session ? (
               <>
+                <Link href="/settings" title="Settings">
+                  <Button variant="ghost" size="icon">
+                    <LuSettings className="h-4 w-4" />
+                  </Button>
+                </Link>
                 <Link href="/cv">
                   <Button variant="default">Dashboard</Button>
                 </Link>
@@ -115,6 +120,12 @@ export function Navbar() {
                   <div className="h-10 animate-pulse bg-muted rounded-lg" />
                 ) : session ? (
                   <>
+                    <Link href="/settings" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start gap-2">
+                        <LuSettings className="h-4 w-4" />
+                        Settings
+                      </Button>
+                    </Link>
                     <Link href="/cv" onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="default" className="w-full">
                         Dashboard

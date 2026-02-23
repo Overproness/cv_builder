@@ -1,10 +1,10 @@
 import { generateCoverLetter } from "@/lib/gemini";
 import { NextResponse } from "next/server";
 
-// POST - Generate a cover letter using AI
+// POST - Generate a cover letter body using AI
 export async function POST(request) {
   try {
-    const { masterCV, jobDescription, company, position } =
+    const { masterCV, jobDescription, company, position, wordCount } =
       await request.json();
 
     if (!masterCV) {
@@ -26,6 +26,7 @@ export async function POST(request) {
       jobDescription,
       company,
       position,
+      wordCount ?? 250,
     );
 
     return NextResponse.json({

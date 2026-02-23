@@ -195,23 +195,25 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
 }
 
 /**
- * Generate a personalized, job-tailored cover letter from a Master CV and Job Description
+ * Generate a personalized, job-tailored cover letter body from a Master CV and Job Description.
+ * Returns ONLY the body paragraphs — no header, no date, no sign-off.
+ * The header/footer are assembled on the frontend.
  */
 export async function generateCoverLetter(
   masterCV,
   jobDescription,
   company = "",
   position = "",
+  wordCount = 250,
 ) {
   if (!model) {
     throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
   }
 
-  const applicantName = masterCV?.personal_info?.name || "Applicant";
-  const applicantEmail = masterCV?.personal_info?.email || "";
-  const applicantPhone = masterCV?.personal_info?.phone || "";
+  const targetMin = Math.max(80, wordCount - 30);
+  const targetMax = wordCount + 30;
 
-  const prompt = `You are an expert career coach and professional writer. Generate a highly personalized, compelling cover letter for a job application.
+  const prompt = `You are an expert career coach and professional writer. Generate the BODY of a compelling, highly personalized cover letter for a job application.
 
 APPLICANT INFORMATION:
 ${JSON.stringify(masterCV, null, 2)}
@@ -222,43 +224,21 @@ Position: ${position || "the position"}
 Job Description:
 ${jobDescription}
 
-COVER LETTER REQUIREMENTS:
-1. Use a professional business letter format
-2. Opening line should immediately capture attention and mention the specific role
-3. Second paragraph: highlight 2-3 most relevant experiences/skills that match the job description
-4. Third paragraph: mention 1-2 specific, impressive projects or achievements from the CV that are relevant
-5. Fourth paragraph: show genuine enthusiasm for this specific company and role, mention something specific about why this company/role interests the applicant
-6. Closing: strong call to action, professional sign-off
-7. Keep it concise - MAXIMUM 4-5 paragraphs, around 300-380 words total
-8. Use specific numbers, metrics, and keywords from both the CV and job description
-9. Do NOT use generic filler phrases like "I am writing to express my interest..."
-10. Be direct, confident, and specific - make it feel unique to this person and this job
-11. The letter should feel natural and human-written, not AI-generated
+COVER LETTER BODY REQUIREMENTS:
+1. Write ONLY the body paragraphs — do NOT include any header, date, greeting (Dear Hiring Manager), or sign-off (Sincerely)
+2. Target word count for the body: ${targetMin}–${targetMax} words (strict — count carefully before outputting)
+3. Structure: 3–4 focused paragraphs
+   - Paragraph 1: Strong opening hook — why THIS specific company/role, mentioning the position title and company name naturally
+   - Paragraph 2: 2–3 most relevant experiences tied to the job requirements with specifics
+   - Paragraph 3: 1–2 impressive specific projects or technical achievements that match the role
+   - Paragraph 4 (optional, keep short): Genuine enthusiasm + call to action
+4. Use specific numbers, metrics, and keywords from both the CV and job description
+5. Do NOT use generic filler phrases like "I am writing to express my interest..."
+6. Be direct, confident, and specific — make it feel unique to this person and this job
+7. The letter should feel natural and human-written, not AI-generated
+8. Use strong action verbs and quantified achievements
 
-FORMAT THE OUTPUT EXACTLY AS FOLLOWS (plain text, use actual line breaks):
-[Today's date written as: Month DD, YYYY]
-
-[Company Name] Hiring Team
-[Company Name]
-
-Dear Hiring Manager,
-
-[Opening paragraph - strong hook about specific role/company]
-
-[Experience paragraph - 2-3 specific relevant experiences tied to job requirements]
-
-[Achievement/Project paragraph - 1-2 impressive specific projects/achievements]
-
-[Company enthusiasm paragraph - why this specific company/role is compelling]
-
-[Closing paragraph - call to action]
-
-Sincerely,
-${applicantName}
-${applicantEmail ? applicantEmail : ""}
-${applicantPhone ? applicantPhone : ""}
-
-OUTPUT (plain text cover letter, no markdown formatting, no code blocks, just the letter):`;
+OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. No markdown, no code blocks, no headers, no greeting, no sign-off.`;
 
   try {
     const generationConfig = {
@@ -278,6 +258,12 @@ OUTPUT (plain text cover letter, no markdown formatting, no code blocks, just th
     text = text
       .replace(/```[a-z]*\n?/g, "")
       .replace(/```\n?/g, "")
+      .trim();
+
+    // Strip any accidental "Dear Hiring Manager," or "Sincerely," lines if AI included them
+    text = text
+      .replace(/^Dear Hiring Manager[,.]?\s*/im, "")
+      .replace(/^Sincerely[,.]?\s*[\s\S]*$/im, "")
       .trim();
 
     return text;
@@ -305,12 +291,13 @@ export async function tailorCVForJob(masterCV, jobDescription) {
   const prompt = `You are an expert resume consultant. Analyze the provided Master CV JSON against the Job Description and create a tailored resume that maximizes relevance.
 
 CRITICAL 1-PAGE RESUME REQUIREMENT:
-- Aim for approximately 400-450 words total (typical 1-page resume length)
-- Be HIGHLY selective with content - quality over quantity
-- Limit to 2-3 experience entries with 2-3 bullet points each
-- Limit to 2-3 project entries with 2-3 bullet points each  
+- Aim for MAXIMUM 400 words total (strict 1-page letter paper at 11pt)
+- Be EXTREMELY selective — choose only the most impactful content
+- Limit to 2-3 experience entries with MAXIMUM 2 bullet points each
+- Limit to 2-3 project entries with MAXIMUM 2 bullet points each
 - Include ALL education entries (usually 1-2)
-- Prioritize most impactful and relevant content only
+- Fewer, stronger bullet points are always better than more, weaker ones
+- If content exceeds 400 words, cut the least relevant bullets first
 
 ATS KEYWORD OPTIMIZATION:
 1. Extract key technical skills, tools, frameworks, and buzzwords from the job description

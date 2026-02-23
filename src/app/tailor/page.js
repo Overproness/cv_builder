@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  assembleCoverLetter,
   downloadCoverLetterAsDocx,
   printCoverLetterAsPdf,
+  renderCoverLetterHtml,
 } from "@/lib/coverLetterUtils";
 import Editor from "@monaco-editor/react";
 import Link from "next/link";
@@ -48,6 +50,14 @@ export default function TailorPage() {
   // Generation options
   const [genResume, setGenResume] = useState(true);
   const [genCoverLetter, setGenCoverLetter] = useState(false);
+  const [wordCount, setWordCount] = useState(250);
+
+  // User settings for cover letter header
+  const [userSettings, setUserSettings] = useState({
+    displayName: "",
+    phone: "",
+    coverLetterEmail: "",
+  });
 
   // Results
   const [tailoredLatex, setTailoredLatex] = useState("");
@@ -81,7 +91,27 @@ export default function TailorPage() {
 
   useEffect(() => {
     loadAllCVs();
+    loadUserSettings();
   }, []);
+
+  const loadUserSettings = async () => {
+    try {
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const data = await res.json();
+        setUserSettings({
+          displayName: data.settings?.displayName || data.name || "",
+          phone: data.settings?.phone || "",
+          coverLetterEmail: data.settings?.coverLetterEmail || data.email || "",
+        });
+        if (data.settings?.coverLetterWordCount) {
+          setWordCount(data.settings.coverLetterWordCount);
+        }
+      }
+    } catch {
+      // silently ignore — defaults remain
+    }
+  };
 
   useEffect(() => {
     if (selectedCVId) {
@@ -170,6 +200,7 @@ export default function TailorPage() {
               jobDescription,
               company,
               position,
+              wordCount,
             }),
           }).then((r) =>
             r.json().then((d) => ({ type: "cl", data: d, ok: r.ok })),
@@ -195,7 +226,15 @@ export default function TailorPage() {
           }
         } else if (result.type === "cl") {
           if (result.ok && result.data.content) {
-            setCoverLetterContent(result.data.content);
+            // Assemble full formatted letter: header (from user settings) + body (from AI)
+            const assembled = assembleCoverLetter({
+              name: userSettings.displayName || masterCV?.personal_info?.name || "",
+              email: userSettings.coverLetterEmail || masterCV?.personal_info?.email || "",
+              phone: userSettings.phone || masterCV?.personal_info?.phone || "",
+              company: company || "",
+              body: result.data.content,
+            });
+            setCoverLetterContent(assembled);
             success = true;
             if (!genResume && genCoverLetter) setActiveTab("coverletter");
           } else {
@@ -600,6 +639,40 @@ export default function TailorPage() {
                       </div>
                     </label>
 
+                    {/* Word count — only shown when CL is selected */}
+                    {genCoverLetter && (
+                      <div className="flex items-center gap-3 px-2 pb-1">
+                        <Label
+                          htmlFor="wordCount"
+                          className="text-xs text-muted-foreground whitespace-nowrap"
+                        >
+                          Body word count
+                        </Label>
+                        <Input
+                          id="wordCount"
+                          type="number"
+                          min={100}
+                          max={600}
+                          step={10}
+                          value={wordCount}
+                          onChange={(e) => setWordCount(Number(e.target.value))}
+                          className="h-7 text-xs w-24"
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          words (default 250)
+                        </span>
+                      </div>
+                    )}
+                    {genCoverLetter && (
+                      <p className="text-xs text-muted-foreground px-2">
+                        Name, email &amp; phone are pulled from{" "}
+                        <Link href="/settings" className="underline text-primary">
+                          Settings
+                        </Link>
+                        .
+                      </p>
+                    )}
+
                     <Button
                       onClick={handleGenerate}
                       disabled={loading || (!genResume && !genCoverLetter)}
@@ -838,6 +911,23 @@ export default function TailorPage() {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => {
+                                const win = window.open("", "_blank");
+                                if (win) {
+                                  win.document.write(
+                                    renderCoverLetterHtml(coverLetterContent, false),
+                                  );
+                                  win.document.close();
+                                }
+                              }}
+                              title="Preview formatted cover letter"
+                            >
+                              <LuEye className="h-4 w-4 mr-1" />
+                              Preview
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() =>
                                 downloadCoverLetterAsDocx(
                                   coverLetterContent,
@@ -853,10 +943,7 @@ export default function TailorPage() {
                               variant="outline"
                               size="sm"
                               onClick={() =>
-                                printCoverLetterAsPdf(
-                                  coverLetterContent,
-                                  masterCV?.personal_info?.name,
-                                )
+                                printCoverLetterAsPdf(coverLetterContent)
                               }
                               title="Print / Save as PDF"
                             >

@@ -20,6 +20,13 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a password'],
     },
+    // Cover letter / profile settings
+    settings: {
+      displayName: { type: String, default: '' },
+      phone: { type: String, default: '' },
+      coverLetterEmail: { type: String, default: '' },
+      coverLetterWordCount: { type: Number, default: 250 },
+    },
   },
   { timestamps: true }
 );

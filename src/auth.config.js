@@ -5,12 +5,18 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname.startsWith('/cv') || nextUrl.pathname.startsWith('/api/cv');
-      
+      const protectedPaths = ['/cv', '/tailor', '/documents', '/settings'];
+      const isProtected =
+        protectedPaths.some((p) => nextUrl.pathname.startsWith(p)) ||
+        nextUrl.pathname.startsWith('/api/cv') ||
+        nextUrl.pathname.startsWith('/api/resume') ||
+        nextUrl.pathname.startsWith('/api/cover-letter') ||
+        nextUrl.pathname.startsWith('/api/settings');
+
       // Allow access to auth API routes and public pages
       if (nextUrl.pathname.startsWith('/api/auth')) return true;
 
-      if (isOnDashboard) {
+      if (isProtected) {
         if (isLoggedIn) return true;
         return false; // Redirect unauthenticated users to login page
       } else if (isLoggedIn) {

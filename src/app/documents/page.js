@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   downloadCoverLetterAsDocx,
   printCoverLetterAsPdf,
+  renderCoverLetterHtml,
 } from "@/lib/coverLetterUtils";
 import Editor from "@monaco-editor/react";
 import Link from "next/link";
@@ -304,6 +305,21 @@ export default function DocumentsPage() {
                   )}
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const win = window.open("", "_blank");
+                      if (win) {
+                        win.document.write(
+                          renderCoverLetterHtml(editedCLContent, false),
+                        );
+                        win.document.close();
+                      }
+                    }}
+                  >
+                    <LuEye className="h-4 w-4 mr-1" /> Preview
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
