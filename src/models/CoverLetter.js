@@ -37,6 +37,11 @@ const CoverLetterSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    applicationGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ApplicationGroup",
+      default: null,
+    },
   },
   { timestamps: true },
 );

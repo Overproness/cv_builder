@@ -36,6 +36,11 @@ const ResumeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
+    applicationGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ApplicationGroup",
+      default: null,
+    },
   },
   { timestamps: true },
 );

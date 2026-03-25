@@ -399,3 +399,77 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
     throw new Error("Failed to tailor CV. Please try again.");
   }
 }
+
+/**
+ * Answer application questions using the Master CV, job description, and company info.
+ * Returns an array of { question, answer } objects.
+ */
+export async function answerApplicationQuestions(
+  masterCV,
+  jobDescription,
+  questions,
+  companyInfo = "",
+) {
+  if (!model) {
+    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
+  }
+
+  const prompt = `You are an expert career coach helping a job applicant answer employer-specific application questions. Use the applicant's CV, the job description, and the company information to craft compelling, authentic answers.
+
+APPLICANT CV:
+${JSON.stringify(masterCV, null, 2)}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+${companyInfo ? `COMPANY INFORMATION (from their website/LinkedIn/etc):\n${companyInfo}\n` : ""}
+
+QUESTIONS TO ANSWER:
+${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
+
+REQUIREMENTS:
+1. Answer each question individually, drawing from the applicant's real experience and skills
+2. Reference specific projects, achievements, or skills from the CV where relevant
+3. If company info is provided, incorporate knowledge about the company (their mission, values, products, culture) into answers
+4. Keep answers professional, concise, and specific (typically 3-6 sentences per answer)
+5. Use a confident but genuine tone — avoid sounding generic or AI-generated
+6. Quantify achievements where possible
+7. Tailor each answer to show why this applicant is a great fit for THIS specific role at THIS company
+
+OUTPUT FORMAT: Return ONLY a valid JSON array of objects with "question" and "answer" fields. No markdown, no code blocks.
+Example: [{"question": "Why do you want to work here?", "answer": "..."}]`;
+
+  try {
+    const generationConfig = {
+      temperature: 0.6,
+      topP: 0.9,
+    };
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig,
+    });
+
+    const response = await result.response;
+    let text = response.text().trim();
+
+    text = text
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+
+    const parsed = JSON.parse(text);
+
+    if (!Array.isArray(parsed)) {
+      throw new Error("Expected array of Q&A objects");
+    }
+
+    return parsed.map((item) => ({
+      question: item.question || "",
+      answer: item.answer || "",
+    }));
+  } catch (error) {
+    console.error("Error answering questions with Gemini:", error);
+    throw new Error("Failed to answer questions. Please try again.");
+  }
+}

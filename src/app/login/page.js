@@ -6,16 +6,35 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { authenticate } from '@/lib/actions';
+import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { useActionState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { LuLoader, LuLock, LuMail, LuSparkles } from 'react-icons/lu';
 
 export default function LoginPage() {
-  const [errorMessage, dispatch, isPending] = useActionState(
-    authenticate,
-    undefined
-  );
+  const router = useRouter();
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [isPending, setIsPending] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsPending(true);
+    setErrorMessage(null);
+    const formData = new FormData(e.target);
+    const result = await signIn('credentials', {
+      email: formData.get('email'),
+      password: formData.get('password'),
+      redirect: false,
+    });
+    setIsPending(false);
+    if (result?.error) {
+      setErrorMessage('Invalid credentials.');
+    } else {
+      router.push('/');
+      router.refresh();
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -40,7 +59,7 @@ export default function LoginPage() {
             </CardHeader>
             
             <CardContent>
-              <form action={dispatch} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <div className="relative">

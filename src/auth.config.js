@@ -11,7 +11,9 @@ export const authConfig = {
         nextUrl.pathname.startsWith("/api/cv") ||
         nextUrl.pathname.startsWith("/api/resume") ||
         nextUrl.pathname.startsWith("/api/cover-letter") ||
-        nextUrl.pathname.startsWith("/api/settings");
+        nextUrl.pathname.startsWith("/api/settings") ||
+        nextUrl.pathname.startsWith("/api/questions") ||
+        nextUrl.pathname.startsWith("/api/application-group");
 
       // Allow access to auth API routes and public pages
       if (nextUrl.pathname.startsWith("/api/auth")) return true;

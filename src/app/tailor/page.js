@@ -31,8 +31,12 @@ import {
   LuFileText,
   LuFiles,
   LuLoader,
+  LuMessageSquare,
+  LuBuilding2,
+  LuPlus,
   LuSave,
   LuSparkles,
+  LuTrash2,
 } from "react-icons/lu";
 
 export default function TailorPage() {
@@ -51,6 +55,11 @@ export default function TailorPage() {
   const [genResume, setGenResume] = useState(true);
   const [genCoverLetter, setGenCoverLetter] = useState(false);
   const [wordCount, setWordCount] = useState(250);
+
+  // Questions & Company Info
+  const [questions, setQuestions] = useState([""]);
+  const [companyInfo, setCompanyInfo] = useState("");
+  const [questionAnswers, setQuestionAnswers] = useState([]);
 
   // User settings for cover letter header
   const [userSettings, setUserSettings] = useState({
@@ -77,6 +86,7 @@ export default function TailorPage() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedAnswerIdx, setCopiedAnswerIdx] = useState(null);
 
   // Toast
   const [message, setMessage] = useState(null);
@@ -162,8 +172,12 @@ export default function TailorPage() {
       showMessage("Please select a Master CV", "error");
       return;
     }
-    if (!genResume && !genCoverLetter) {
-      showMessage("Please select at least one generation option", "error");
+    const nonEmptyQuestionsCheck = questions.filter((q) => q.trim());
+    if (!genResume && !genCoverLetter && nonEmptyQuestionsCheck.length === 0) {
+      showMessage(
+        "Please select at least one generation option or add questions",
+        "error",
+      );
       return;
     }
 
@@ -172,8 +186,10 @@ export default function TailorPage() {
     setShowPdfPreview(false);
     setSavedResumeId(null);
     setSavedCLId(null);
+    setSavedGroupId(null);
     setTailoredLatex("");
     setCoverLetterContent("");
+    setQuestionAnswers([]);
 
     try {
       const promises = [];
@@ -204,6 +220,25 @@ export default function TailorPage() {
             }),
           }).then((r) =>
             r.json().then((d) => ({ type: "cl", data: d, ok: r.ok })),
+          ),
+        );
+      }
+
+      // If user has questions, answer them
+      const nonEmptyQuestions = questions.filter((q) => q.trim());
+      if (nonEmptyQuestions.length > 0) {
+        promises.push(
+          fetch("/api/questions/answer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              masterCV,
+              jobDescription,
+              questions: nonEmptyQuestions,
+              companyInfo,
+            }),
+          }).then((r) =>
+            r.json().then((d) => ({ type: "qa", data: d, ok: r.ok })),
           ),
         );
       }
@@ -247,11 +282,23 @@ export default function TailorPage() {
               "error",
             );
           }
+        } else if (result.type === "qa") {
+          if (result.ok && result.data.answers) {
+            setQuestionAnswers(result.data.answers);
+            success = true;
+          } else {
+            showMessage(
+              result.data.error || "Failed to answer questions",
+              "error",
+            );
+          }
         }
       }
 
       if (success) {
-        if (genResume && genCoverLetter) setActiveTab("resume");
+        if (genResume) setActiveTab("resume");
+        else if (genCoverLetter) setActiveTab("coverletter");
+        else if (nonEmptyQuestions.length > 0) setActiveTab("questions");
         showMessage("Generated successfully!", "success");
       }
     } catch (error) {
@@ -284,18 +331,21 @@ export default function TailorPage() {
       const data = await res.json();
       if (res.ok) {
         setSavedResumeId(data.id);
-        showMessage("Resume saved to your account!", "success");
+        showMessage("Resume saved!", "success");
+        return data.id;
       } else {
         showMessage(data.error || "Failed to save resume", "error");
+        return null;
       }
     } catch {
       showMessage("Failed to save resume", "error");
+      return null;
     } finally {
       setSavingResume(false);
     }
   };
 
-  const saveCoverLetter = async () => {
+  const saveCoverLetter = async (resumeId = null) => {
     if (!coverLetterContent) return;
     setSavingCL(true);
     try {
@@ -310,20 +360,74 @@ export default function TailorPage() {
           jobDescription,
           content: coverLetterContent,
           masterCVId: selectedCVId || null,
-          resumeId: savedResumeId || null,
+          resumeId: resumeId || savedResumeId || null,
         }),
       });
       const data = await res.json();
       if (res.ok) {
         setSavedCLId(data.id);
-        showMessage("Cover letter saved to your account!", "success");
+        showMessage("Cover letter saved!", "success");
+        return data.id;
       } else {
         showMessage(data.error || "Failed to save cover letter", "error");
+        return null;
       }
     } catch {
       showMessage("Failed to save cover letter", "error");
+      return null;
     } finally {
       setSavingCL(false);
+    }
+  };
+
+  // Save all: resume + cover letter + questions as linked ApplicationGroup
+  const [savingAll, setSavingAll] = useState(false);
+  const [savedGroupId, setSavedGroupId] = useState(null);
+
+  const saveAll = async () => {
+    setSavingAll(true);
+    try {
+      let resumeId = savedResumeId;
+      let clId = savedCLId;
+
+      // Save resume if not yet saved
+      if (tailoredLatex && !resumeId) {
+        resumeId = await saveResume();
+      }
+      // Save cover letter if not yet saved
+      if (coverLetterContent && !clId) {
+        clId = await saveCoverLetter(resumeId);
+      }
+
+      // Create application group linking everything
+      const res = await fetch("/api/application-group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:
+            company && position
+              ? `${position} at ${company}`
+              : "Application",
+          company,
+          position,
+          jobDescription,
+          companyInfo,
+          questions: questionAnswers.length > 0 ? questionAnswers : [],
+          resumeId: resumeId || null,
+          coverLetterId: clId || null,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSavedGroupId(data.id);
+        showMessage("Everything saved and linked!", "success");
+      } else {
+        showMessage(data.error || "Failed to save application group", "error");
+      }
+    } catch {
+      showMessage("Failed to save", "error");
+    } finally {
+      setSavingAll(false);
     }
   };
 
@@ -600,6 +704,94 @@ export default function TailorPage() {
                   </CardContent>
                 </Card>
 
+                {/* Questions & Company Info */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <LuMessageSquare className="h-4 w-4 text-primary" />
+                      Application Questions & Company Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0 flex flex-col gap-3">
+                    {/* Questions */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-xs">
+                          Questions{" "}
+                          <span className="text-muted-foreground">
+                            (optional)
+                          </span>
+                        </Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={() => setQuestions([...questions, ""])}
+                        >
+                          <LuPlus className="h-3 w-3 mr-1" />
+                          Add Question
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Add questions from the job application. AI will answer
+                        them using your CV and company info.
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {questions.map((q, i) => (
+                          <div key={i} className="flex gap-2">
+                            <Input
+                              placeholder={`e.g. Why do you want to work here?`}
+                              value={q}
+                              onChange={(e) => {
+                                const updated = [...questions];
+                                updated[i] = e.target.value;
+                                setQuestions(updated);
+                              }}
+                              className="h-9 text-sm flex-1"
+                            />
+                            {questions.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                                onClick={() =>
+                                  setQuestions(
+                                    questions.filter((_, idx) => idx !== i),
+                                  )
+                                }
+                              >
+                                <LuTrash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Company Info */}
+                    <div>
+                      <Label htmlFor="companyInfo" className="text-xs mb-1 block">
+                        Company Info{" "}
+                        <span className="text-muted-foreground">
+                          (optional)
+                        </span>
+                      </Label>
+                      <textarea
+                        id="companyInfo"
+                        value={companyInfo}
+                        onChange={(e) => setCompanyInfo(e.target.value)}
+                        placeholder="Paste company info from their website, LinkedIn, about page, etc..."
+                        className="textarea-field resize-none text-sm leading-relaxed w-full"
+                        style={{ minHeight: "100px" }}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Helps AI give more relevant answers to application
+                        questions.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Generation Options */}
                 <Card>
                   <CardHeader className="pb-3">
@@ -682,7 +874,12 @@ export default function TailorPage() {
 
                     <Button
                       onClick={handleGenerate}
-                      disabled={loading || (!genResume && !genCoverLetter)}
+                      disabled={
+                        loading ||
+                        (!genResume &&
+                          !genCoverLetter &&
+                          !questions.some((q) => q.trim()))
+                      }
                       className="w-full mt-1"
                       size="lg"
                     >
@@ -699,7 +896,9 @@ export default function TailorPage() {
                             ? "Resume & Cover Letter"
                             : genResume
                               ? "Resume"
-                              : "Cover Letter"}
+                              : genCoverLetter
+                                ? "Cover Letter"
+                                : "Answers"}
                         </>
                       )}
                     </Button>
@@ -709,7 +908,7 @@ export default function TailorPage() {
 
               {/* ── RIGHT COLUMN: Results ── */}
               <div className="flex flex-col" style={{ minHeight: "600px" }}>
-                {!tailoredLatex && !coverLetterContent && !loading ? (
+                {!tailoredLatex && !coverLetterContent && !questionAnswers.length && !loading ? (
                   <Card className="flex-1 flex items-center justify-center">
                     <CardContent className="p-12 text-center">
                       <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
@@ -736,37 +935,56 @@ export default function TailorPage() {
                   </Card>
                 ) : (
                   <Card className="flex-1 flex flex-col overflow-hidden">
-                    {/* Tabs — only show when both are present */}
-                    {tailoredLatex && coverLetterContent && (
+                    {/* Tabs — show when multiple types are present */}
+                    {((tailoredLatex ? 1 : 0) +
+                      (coverLetterContent ? 1 : 0) +
+                      (questionAnswers.length > 0 ? 1 : 0)) > 1 && (
                       <div className="flex border-b border-border px-4 pt-3 gap-1">
-                        <button
-                          onClick={() => setActiveTab("resume")}
-                          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
-                            activeTab === "resume"
-                              ? "bg-primary/10 text-primary border-b-2 border-primary"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          <LuFileText className="h-4 w-4" /> Resume
-                          <LuCheck className="h-3 w-3 text-green-500" />
-                        </button>
-                        <button
-                          onClick={() => setActiveTab("coverletter")}
-                          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
-                            activeTab === "coverletter"
-                              ? "bg-primary/10 text-primary border-b-2 border-primary"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          <LuFilePen className="h-4 w-4" /> Cover Letter
-                          <LuCheck className="h-3 w-3 text-green-500" />
-                        </button>
+                        {tailoredLatex && (
+                          <button
+                            onClick={() => setActiveTab("resume")}
+                            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+                              activeTab === "resume"
+                                ? "bg-primary/10 text-primary border-b-2 border-primary"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <LuFileText className="h-4 w-4" /> Resume
+                            <LuCheck className="h-3 w-3 text-green-500" />
+                          </button>
+                        )}
+                        {coverLetterContent && (
+                          <button
+                            onClick={() => setActiveTab("coverletter")}
+                            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+                              activeTab === "coverletter"
+                                ? "bg-primary/10 text-primary border-b-2 border-primary"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <LuFilePen className="h-4 w-4" /> Cover Letter
+                            <LuCheck className="h-3 w-3 text-green-500" />
+                          </button>
+                        )}
+                        {questionAnswers.length > 0 && (
+                          <button
+                            onClick={() => setActiveTab("questions")}
+                            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+                              activeTab === "questions"
+                                ? "bg-primary/10 text-primary border-b-2 border-primary"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <LuMessageSquare className="h-4 w-4" /> Q&A
+                            <LuCheck className="h-3 w-3 text-green-500" />
+                          </button>
+                        )}
                       </div>
                     )}
 
                     {/* ── RESUME PANEL ── */}
                     {tailoredLatex &&
-                      (activeTab === "resume" || !coverLetterContent) && (
+                      (activeTab === "resume" || (!coverLetterContent && questionAnswers.length === 0)) && (
                         <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
                           {/* Toolbar */}
                           <div className="flex flex-wrap items-center gap-2">
@@ -907,7 +1125,7 @@ export default function TailorPage() {
 
                     {/* ── COVER LETTER PANEL ── */}
                     {coverLetterContent &&
-                      (activeTab === "coverletter" || !tailoredLatex) && (
+                      (activeTab === "coverletter" || (!tailoredLatex && questionAnswers.length === 0)) && (
                         <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
                           {/* Toolbar */}
                           <div className="flex flex-wrap items-center gap-2">
@@ -1004,6 +1222,111 @@ export default function TailorPage() {
                           )}
                         </div>
                       )}
+
+                    {/* ── QUESTIONS PANEL ── */}
+                    {questionAnswers.length > 0 &&
+                      (activeTab === "questions" || (!tailoredLatex && !coverLetterContent)) && (
+                        <div className="flex-1 flex flex-col overflow-auto p-4 gap-3">
+                          <span className="text-sm font-semibold flex items-center gap-2">
+                            <LuMessageSquare className="h-4 w-4 text-primary" />
+                            Application Question Answers
+                          </span>
+                          <div className="flex flex-col gap-4">
+                            {questionAnswers.map((qa, i) => (
+                              <div
+                                key={i}
+                                className="border border-border rounded-lg p-4"
+                              >
+                                <p className="text-sm font-medium mb-2 flex items-start gap-2">
+                                  <span className="bg-primary/10 text-primary rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                    {i + 1}
+                                  </span>
+                                  {qa.question}
+                                </p>
+                                <textarea
+                                  value={qa.answer}
+                                  onChange={(e) => {
+                                    const updated = [...questionAnswers];
+                                    updated[i] = {
+                                      ...updated[i],
+                                      answer: e.target.value,
+                                    };
+                                    setQuestionAnswers(updated);
+                                  }}
+                                  className="w-full rounded-md border border-border bg-background p-3 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                                  rows={4}
+                                  spellCheck={true}
+                                />
+                                <div className="flex justify-end mt-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(qa.answer);
+                                      setCopiedAnswerIdx(i);
+                                      setTimeout(() => setCopiedAnswerIdx(null), 2000);
+                                    }}
+                                    className="text-xs gap-1.5"
+                                  >
+                                    {copiedAnswerIdx === i ? (
+                                      <>
+                                        <LuCheck className="h-3.5 w-3.5 text-green-500" />
+                                        Copied!
+                                      </>
+                                    ) : (
+                                      <>
+                                        <LuCopy className="h-3.5 w-3.5" />
+                                        Copy Answer
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            ✏️ Edit the answers above, then copy or save.
+                          </p>
+                        </div>
+                      )}
+
+                    {/* ── SAVE ALL BAR ── */}
+                    {(tailoredLatex || coverLetterContent || questionAnswers.length > 0) && (
+                      <div className="border-t border-border px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={saveAll}
+                            disabled={savingAll || !!savedGroupId}
+                            className="ml-auto"
+                          >
+                            {savingAll ? (
+                              <>
+                                <LuLoader className="h-4 w-4 animate-spin mr-2" />
+                                Saving...
+                              </>
+                            ) : savedGroupId ? (
+                              <>
+                                <LuCheck className="h-4 w-4 text-green-500 mr-2" />
+                                Saved
+                              </>
+                            ) : (
+                              <>
+                                <LuSave className="h-4 w-4 mr-2" />
+                                Save All
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        {savedGroupId && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1 justify-end">
+                            <LuCheck className="h-3 w-3" /> Everything saved &amp; linked —{" "}
+                            <Link href="/documents" className="underline">
+                              View in My Documents
+                            </Link>
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </Card>
                 )}
               </div>
