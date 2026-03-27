@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
+import { decryptApiKey } from "@/lib/apiKeyUtils";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
-import { decryptApiKey } from "@/lib/apiKeyUtils";
 
 /**
  * Get the authenticated user's decrypted Gemini API key.

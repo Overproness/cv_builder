@@ -1,23 +1,29 @@
-'use client';
+"use client";
 
-import { Footer } from '@/components/Footer';
-import { Navbar } from '@/components/Navbar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { LuLoader, LuLock, LuMail, LuSparkles, LuUser } from 'react-icons/lu';
+import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { LuLoader, LuLock, LuMail, LuSparkles, LuUser } from "react-icons/lu";
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
+    name: "",
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -27,14 +33,14 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
@@ -42,12 +48,12 @@ export default function SignUpPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || 'Something went wrong');
+        throw new Error(data.message || "Something went wrong");
       }
 
       // Auto sign-in after registration, then redirect to settings for onboarding
-      const { signIn } = await import('next-auth/react');
-      const signInResult = await signIn('credentials', {
+      const { signIn } = await import("next-auth/react");
+      const signInResult = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         redirect: false,
@@ -55,9 +61,9 @@ export default function SignUpPage() {
 
       if (signInResult?.error) {
         // Fallback to login page if auto sign-in fails
-        router.push('/login');
+        router.push("/login");
       } else {
-        router.push('/settings');
+        router.push("/settings");
         router.refresh();
       }
     } catch (err) {
@@ -70,13 +76,13 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
+
       <main className="flex-1 flex items-center justify-center px-4 py-12 relative">
         {/* Background Elements */}
         <div className="hero-pattern"></div>
         <div className="glow-orb glow-orb-primary"></div>
         <div className="glow-orb glow-orb-secondary"></div>
-        
+
         <div className="w-full max-w-md relative z-10">
           <Card className="shadow-xl">
             <CardHeader className="text-center pb-2">
@@ -88,7 +94,7 @@ export default function SignUpPage() {
                 Get started with your free account today
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent>
               {error && (
                 <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4">
@@ -113,7 +119,7 @@ export default function SignUpPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <div className="relative">
@@ -130,7 +136,7 @@ export default function SignUpPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <div className="relative">
@@ -160,15 +166,18 @@ export default function SignUpPage() {
                       Creating account...
                     </>
                   ) : (
-                    'Create account'
+                    "Create account"
                   )}
                 </Button>
               </form>
-              
+
               <div className="mt-6 text-center text-sm">
                 <p className="text-muted-foreground">
-                  Already have an account?{' '}
-                  <Link href="/login" className="text-primary font-medium hover:underline">
+                  Already have an account?{" "}
+                  <Link
+                    href="/login"
+                    className="text-primary font-medium hover:underline"
+                  >
                     Sign in
                   </Link>
                 </p>
@@ -177,7 +186,7 @@ export default function SignUpPage() {
           </Card>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

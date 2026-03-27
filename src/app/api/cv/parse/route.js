@@ -13,7 +13,10 @@ export async function POST(request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       if (e.message === "API_KEY_MISSING")
         return NextResponse.json(
-          { error: "Please add your Gemini API key in Settings before generating." },
+          {
+            error:
+              "Please add your Gemini API key in Settings before generating.",
+          },
           { status: 403 },
         );
       throw e;
@@ -28,7 +31,10 @@ export async function POST(request) {
       );
     }
 
-    const { data: parsedCV, tokenUsage } = await parseRawTextToCV(rawText, apiKey);
+    const { data: parsedCV, tokenUsage } = await parseRawTextToCV(
+      rawText,
+      apiKey,
+    );
 
     await recordTokenUsage(userId, "parse", tokenUsage);
 

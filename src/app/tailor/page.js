@@ -33,7 +33,6 @@ import {
   LuKey,
   LuLoader,
   LuMessageSquare,
-  LuBuilding2,
   LuPlus,
   LuSave,
   LuSparkles,
@@ -217,7 +216,14 @@ export default function TailorPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ masterCV, jobDescription }),
           }).then((r) =>
-            r.json().then((d) => ({ type: "resume", data: d, ok: r.ok, status: r.status })),
+            r
+              .json()
+              .then((d) => ({
+                type: "resume",
+                data: d,
+                ok: r.ok,
+                status: r.status,
+              })),
           ),
         );
       }
@@ -235,7 +241,14 @@ export default function TailorPage() {
               wordCount,
             }),
           }).then((r) =>
-            r.json().then((d) => ({ type: "cl", data: d, ok: r.ok, status: r.status })),
+            r
+              .json()
+              .then((d) => ({
+                type: "cl",
+                data: d,
+                ok: r.ok,
+                status: r.status,
+              })),
           ),
         );
       }
@@ -254,7 +267,14 @@ export default function TailorPage() {
               companyInfo,
             }),
           }).then((r) =>
-            r.json().then((d) => ({ type: "qa", data: d, ok: r.ok, status: r.status })),
+            r
+              .json()
+              .then((d) => ({
+                type: "qa",
+                data: d,
+                ok: r.ok,
+                status: r.status,
+              })),
           ),
         );
       }
@@ -272,8 +292,7 @@ export default function TailorPage() {
         // Check for API key missing error
         if (result.status === 403) {
           showMessage(
-            result.data.error ||
-              "Please add your Gemini API key in Settings.",
+            result.data.error || "Please add your Gemini API key in Settings.",
             "error",
           );
           setHasApiKey(false);
@@ -288,9 +307,12 @@ export default function TailorPage() {
             success = true;
             if (genResume && !genCoverLetter) setActiveTab("resume");
             if (result.data.tokenUsage) {
-              aggregatedTokens.inputTokens += result.data.tokenUsage.inputTokens || 0;
-              aggregatedTokens.outputTokens += result.data.tokenUsage.outputTokens || 0;
-              aggregatedTokens.totalTokens += result.data.tokenUsage.totalTokens || 0;
+              aggregatedTokens.inputTokens +=
+                result.data.tokenUsage.inputTokens || 0;
+              aggregatedTokens.outputTokens +=
+                result.data.tokenUsage.outputTokens || 0;
+              aggregatedTokens.totalTokens +=
+                result.data.tokenUsage.totalTokens || 0;
               aggregatedTokens.cost += result.data.tokenUsage.cost || 0;
             }
           } else {
@@ -317,9 +339,12 @@ export default function TailorPage() {
             success = true;
             if (!genResume && genCoverLetter) setActiveTab("coverletter");
             if (result.data.tokenUsage) {
-              aggregatedTokens.inputTokens += result.data.tokenUsage.inputTokens || 0;
-              aggregatedTokens.outputTokens += result.data.tokenUsage.outputTokens || 0;
-              aggregatedTokens.totalTokens += result.data.tokenUsage.totalTokens || 0;
+              aggregatedTokens.inputTokens +=
+                result.data.tokenUsage.inputTokens || 0;
+              aggregatedTokens.outputTokens +=
+                result.data.tokenUsage.outputTokens || 0;
+              aggregatedTokens.totalTokens +=
+                result.data.tokenUsage.totalTokens || 0;
               aggregatedTokens.cost += result.data.tokenUsage.cost || 0;
             }
           } else {
@@ -333,9 +358,12 @@ export default function TailorPage() {
             setQuestionAnswers(result.data.answers);
             success = true;
             if (result.data.tokenUsage) {
-              aggregatedTokens.inputTokens += result.data.tokenUsage.inputTokens || 0;
-              aggregatedTokens.outputTokens += result.data.tokenUsage.outputTokens || 0;
-              aggregatedTokens.totalTokens += result.data.tokenUsage.totalTokens || 0;
+              aggregatedTokens.inputTokens +=
+                result.data.tokenUsage.inputTokens || 0;
+              aggregatedTokens.outputTokens +=
+                result.data.tokenUsage.outputTokens || 0;
+              aggregatedTokens.totalTokens +=
+                result.data.tokenUsage.totalTokens || 0;
               aggregatedTokens.cost += result.data.tokenUsage.cost || 0;
             }
           } else {
@@ -461,9 +489,7 @@ export default function TailorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title:
-            company && position
-              ? `${position} at ${company}`
-              : "Application",
+            company && position ? `${position} at ${company}` : "Application",
           company,
           position,
           jobDescription,
@@ -826,7 +852,10 @@ export default function TailorPage() {
 
                     {/* Company Info */}
                     <div>
-                      <Label htmlFor="companyInfo" className="text-xs mb-1 block">
+                      <Label
+                        htmlFor="companyInfo"
+                        className="text-xs mb-1 block"
+                      >
                         Company Info{" "}
                         <span className="text-muted-foreground">
                           (optional)
@@ -981,7 +1010,10 @@ export default function TailorPage() {
 
               {/* ── RIGHT COLUMN: Results ── */}
               <div className="flex flex-col" style={{ minHeight: "600px" }}>
-                {!tailoredLatex && !coverLetterContent && !questionAnswers.length && !loading ? (
+                {!tailoredLatex &&
+                !coverLetterContent &&
+                !questionAnswers.length &&
+                !loading ? (
                   <Card className="flex-1 flex items-center justify-center">
                     <CardContent className="p-12 text-center">
                       <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
@@ -1009,9 +1041,10 @@ export default function TailorPage() {
                 ) : (
                   <Card className="flex-1 flex flex-col overflow-hidden">
                     {/* Tabs — show when multiple types are present */}
-                    {((tailoredLatex ? 1 : 0) +
+                    {(tailoredLatex ? 1 : 0) +
                       (coverLetterContent ? 1 : 0) +
-                      (questionAnswers.length > 0 ? 1 : 0)) > 1 && (
+                      (questionAnswers.length > 0 ? 1 : 0) >
+                      1 && (
                       <div className="flex border-b border-border px-4 pt-3 gap-1">
                         {tailoredLatex && (
                           <button
@@ -1057,7 +1090,9 @@ export default function TailorPage() {
 
                     {/* ── RESUME PANEL ── */}
                     {tailoredLatex &&
-                      (activeTab === "resume" || (!coverLetterContent && questionAnswers.length === 0)) && (
+                      (activeTab === "resume" ||
+                        (!coverLetterContent &&
+                          questionAnswers.length === 0)) && (
                         <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
                           {/* Toolbar */}
                           <div className="flex flex-wrap items-center gap-2">
@@ -1198,7 +1233,8 @@ export default function TailorPage() {
 
                     {/* ── COVER LETTER PANEL ── */}
                     {coverLetterContent &&
-                      (activeTab === "coverletter" || (!tailoredLatex && questionAnswers.length === 0)) && (
+                      (activeTab === "coverletter" ||
+                        (!tailoredLatex && questionAnswers.length === 0)) && (
                         <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
                           {/* Toolbar */}
                           <div className="flex flex-wrap items-center gap-2">
@@ -1298,7 +1334,8 @@ export default function TailorPage() {
 
                     {/* ── QUESTIONS PANEL ── */}
                     {questionAnswers.length > 0 &&
-                      (activeTab === "questions" || (!tailoredLatex && !coverLetterContent)) && (
+                      (activeTab === "questions" ||
+                        (!tailoredLatex && !coverLetterContent)) && (
                         <div className="flex-1 flex flex-col overflow-auto p-4 gap-3">
                           <span className="text-sm font-semibold flex items-center gap-2">
                             <LuMessageSquare className="h-4 w-4 text-primary" />
@@ -1337,7 +1374,10 @@ export default function TailorPage() {
                                     onClick={() => {
                                       navigator.clipboard.writeText(qa.answer);
                                       setCopiedAnswerIdx(i);
-                                      setTimeout(() => setCopiedAnswerIdx(null), 2000);
+                                      setTimeout(
+                                        () => setCopiedAnswerIdx(null),
+                                        2000,
+                                      );
                                     }}
                                     className="text-xs gap-1.5"
                                   >
@@ -1364,7 +1404,9 @@ export default function TailorPage() {
                       )}
 
                     {/* ── SAVE ALL BAR ── */}
-                    {(tailoredLatex || coverLetterContent || questionAnswers.length > 0) && (
+                    {(tailoredLatex ||
+                      coverLetterContent ||
+                      questionAnswers.length > 0) && (
                       <div className="border-t border-border px-4 py-3">
                         {/* Token usage for this generation */}
                         {tokenUsage && (
@@ -1374,19 +1416,28 @@ export default function TailorPage() {
                               This generation:
                             </span>
                             <span>
-                              <span className="text-muted-foreground">Input:</span>{" "}
+                              <span className="text-muted-foreground">
+                                Input:
+                              </span>{" "}
                               {tokenUsage.inputTokens?.toLocaleString()}
                             </span>
                             <span>
-                              <span className="text-muted-foreground">Output:</span>{" "}
+                              <span className="text-muted-foreground">
+                                Output:
+                              </span>{" "}
                               {tokenUsage.outputTokens?.toLocaleString()}
                             </span>
                             <span className="font-medium">
-                              <span className="text-muted-foreground">Total:</span>{" "}
+                              <span className="text-muted-foreground">
+                                Total:
+                              </span>{" "}
                               {tokenUsage.totalTokens?.toLocaleString()} tokens
                             </span>
                             <span className="text-green-600 dark:text-green-400 font-medium">
-                              ~${tokenUsage.cost < 0.01 ? tokenUsage.cost.toFixed(6) : tokenUsage.cost.toFixed(4)}
+                              ~$
+                              {tokenUsage.cost < 0.01
+                                ? tokenUsage.cost.toFixed(6)
+                                : tokenUsage.cost.toFixed(4)}
                             </span>
                           </div>
                         )}
@@ -1416,7 +1467,8 @@ export default function TailorPage() {
                         </div>
                         {savedGroupId && (
                           <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1 justify-end">
-                            <LuCheck className="h-3 w-3" /> Everything saved &amp; linked —{" "}
+                            <LuCheck className="h-3 w-3" /> Everything saved
+                            &amp; linked —{" "}
                             <Link href="/documents" className="underline">
                               View in My Documents
                             </Link>

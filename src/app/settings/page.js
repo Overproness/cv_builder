@@ -407,9 +407,7 @@ export default function SettingsPage() {
                                   key={i}
                                   className="border-t border-border hover:bg-muted/30"
                                 >
-                                  <td className="p-2 capitalize">
-                                    {req.type}
-                                  </td>
+                                  <td className="p-2 capitalize">{req.type}</td>
                                   <td className="p-2 text-right">
                                     {req.inputTokens?.toLocaleString()}
                                   </td>

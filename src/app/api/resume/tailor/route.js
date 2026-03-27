@@ -14,7 +14,10 @@ export async function POST(request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       if (e.message === "API_KEY_MISSING")
         return NextResponse.json(
-          { error: "Please add your Gemini API key in Settings before generating." },
+          {
+            error:
+              "Please add your Gemini API key in Settings before generating.",
+          },
           { status: 403 },
         );
       throw e;
@@ -37,7 +40,11 @@ export async function POST(request) {
     }
 
     // Tailor the CV for the job
-    const { data: tailoredCV, tokenUsage } = await tailorCVForJob(masterCV, jobDescription, apiKey);
+    const { data: tailoredCV, tokenUsage } = await tailorCVForJob(
+      masterCV,
+      jobDescription,
+      apiKey,
+    );
 
     // Record token usage
     await recordTokenUsage(userId, "tailor", tokenUsage);

@@ -4,8 +4,8 @@ const MODEL_NAME = "gemini-2.0-flash";
 
 // Pricing per 1M tokens (Gemini 2.0 Flash)
 const PRICING = {
-  inputPerMillion: 0.10,
-  outputPerMillion: 0.40,
+  inputPerMillion: 0.1,
+  outputPerMillion: 0.4,
 };
 
 /**
@@ -299,7 +299,9 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
   } catch (error) {
     console.error("Error generating cover letter with Gemini:", error);
     if (error?.status === 429) {
-      throw new Error("Rate limit exceeded. Please wait a moment and try again.");
+      throw new Error(
+        "Rate limit exceeded. Please wait a moment and try again.",
+      );
     }
     throw new Error("Failed to generate cover letter. Please try again.");
   }
@@ -428,7 +430,9 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
   } catch (error) {
     console.error("Error tailoring CV with Gemini:", error);
     if (error?.status === 429) {
-      throw new Error("Rate limit exceeded. Please wait a moment and try again.");
+      throw new Error(
+        "Rate limit exceeded. Please wait a moment and try again.",
+      );
     }
     throw new Error("Failed to tailor CV. Please try again.");
   }
@@ -506,7 +510,9 @@ Example: [{"question": "Why do you want to work here?", "answer": "..."}]`;
   } catch (error) {
     console.error("Error answering questions with Gemini:", error);
     if (error?.status === 429) {
-      throw new Error("Rate limit exceeded. Please wait a moment and try again.");
+      throw new Error(
+        "Rate limit exceeded. Please wait a moment and try again.",
+      );
     }
     throw new Error("Failed to answer questions. Please try again.");
   }

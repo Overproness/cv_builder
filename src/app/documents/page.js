@@ -129,7 +129,9 @@ export default function DocumentsPage() {
   const deleteGroup = async (id) => {
     if (!confirm("Delete this application group?")) return;
     try {
-      const res = await fetch(`/api/application-group/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/application-group/${id}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
         setApplicationGroups((prev) => prev.filter((g) => g._id !== id));
         showMessage("Application group deleted", "success");
@@ -270,7 +272,8 @@ export default function DocumentsPage() {
           (item.title && item.title.toLowerCase().includes(q)) ||
           (item.company && item.company.toLowerCase().includes(q)) ||
           (item.position && item.position.toLowerCase().includes(q)) ||
-          (item.jobDescription && item.jobDescription.toLowerCase().includes(q)) ||
+          (item.jobDescription &&
+            item.jobDescription.toLowerCase().includes(q)) ||
           (item.content && item.content.toLowerCase().includes(q)),
       );
     },
@@ -479,7 +482,9 @@ export default function DocumentsPage() {
                   <h2 className="font-semibold">{viewingGroup.title}</h2>
                   {viewingGroup.company && (
                     <p className="text-sm text-muted-foreground">
-                      {viewingGroup.position ? `${viewingGroup.position} @ ` : ""}
+                      {viewingGroup.position
+                        ? `${viewingGroup.position} @ `
+                        : ""}
                       {viewingGroup.company}
                     </p>
                   )}
@@ -518,7 +523,9 @@ export default function DocumentsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => openCoverLetter(groupDetail.coverLetter)}
+                          onClick={() =>
+                            openCoverLetter(groupDetail.coverLetter)
+                          }
                         >
                           <LuFilePen className="h-4 w-4 mr-1" />
                           View Cover Letter
@@ -527,32 +534,33 @@ export default function DocumentsPage() {
                     </div>
 
                     {/* Questions & Answers */}
-                    {groupDetail.questions && groupDetail.questions.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                          <LuMessageSquare className="h-4 w-4 text-primary" />
-                          Application Questions & Answers
-                        </h3>
-                        <div className="flex flex-col gap-3">
-                          {groupDetail.questions.map((qa, i) => (
-                            <div
-                              key={i}
-                              className="border border-border rounded-lg p-4"
-                            >
-                              <p className="text-sm font-medium mb-2 flex items-start gap-2">
-                                <span className="bg-primary/10 text-primary rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                                  {i + 1}
-                                </span>
-                                {qa.question}
-                              </p>
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap pl-7">
-                                {qa.answer}
-                              </p>
-                            </div>
-                          ))}
+                    {groupDetail.questions &&
+                      groupDetail.questions.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                            <LuMessageSquare className="h-4 w-4 text-primary" />
+                            Application Questions & Answers
+                          </h3>
+                          <div className="flex flex-col gap-3">
+                            {groupDetail.questions.map((qa, i) => (
+                              <div
+                                key={i}
+                                className="border border-border rounded-lg p-4"
+                              >
+                                <p className="text-sm font-medium mb-2 flex items-start gap-2">
+                                  <span className="bg-primary/10 text-primary rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                    {i + 1}
+                                  </span>
+                                  {qa.question}
+                                </p>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap pl-7">
+                                  {qa.answer}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Company Info */}
                     {groupDetail.companyInfo && (
@@ -684,10 +692,12 @@ export default function DocumentsPage() {
             /* ── APPLICATIONS TAB ── */
             applicationGroups.length === 0 ? (
               <EmptyState
-                icon={
-                  <LuLink className="h-10 w-10 text-muted-foreground" />
+                icon={<LuLink className="h-10 w-10 text-muted-foreground" />}
+                title={
+                  debouncedSearch
+                    ? "No Matching Applications"
+                    : "No Saved Applications"
                 }
-                title={debouncedSearch ? "No Matching Applications" : "No Saved Applications"}
                 description={
                   debouncedSearch
                     ? "Try a different search term."
@@ -697,7 +707,8 @@ export default function DocumentsPage() {
                   !debouncedSearch && (
                     <Link href="/tailor">
                       <Button>
-                        Create Application <LuArrowRight className="ml-2 h-4 w-4" />
+                        Create Application{" "}
+                        <LuArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>
                   )
@@ -785,7 +796,9 @@ export default function DocumentsPage() {
                 icon={
                   <LuFileText className="h-10 w-10 text-muted-foreground" />
                 }
-                title={debouncedSearch ? "No Matching Resumes" : "No Saved Resumes"}
+                title={
+                  debouncedSearch ? "No Matching Resumes" : "No Saved Resumes"
+                }
                 description={
                   debouncedSearch
                     ? "Try a different search term."
@@ -825,7 +838,11 @@ export default function DocumentsPage() {
           filteredCoverLetters.length === 0 ? (
             <EmptyState
               icon={<LuFilePen className="h-10 w-10 text-muted-foreground" />}
-              title={debouncedSearch ? "No Matching Cover Letters" : "No Saved Cover Letters"}
+              title={
+                debouncedSearch
+                  ? "No Matching Cover Letters"
+                  : "No Saved Cover Letters"
+              }
               description={
                 debouncedSearch
                   ? "Try a different search term."
