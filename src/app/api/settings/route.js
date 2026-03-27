@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import dbConnect from "@/lib/dbConnect";
+import { decryptApiKey, encryptApiKey, maskApiKey } from "@/lib/apiKeyUtils";
 import User from "@/models/User";
 import { NextResponse } from "next/server";
 
@@ -16,15 +17,31 @@ export async function GET() {
     if (!session?.user) return UNAUTHORIZED_RESPONSE;
 
     const user = await User.findById(String(session.user.id)).select(
-      "name email settings",
+      "name email settings geminiApiKey tokenUsage",
     );
     if (!user)
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    // Mask the API key for display
+    let maskedApiKey = "";
+    if (user.geminiApiKey) {
+      const plain = decryptApiKey(user.geminiApiKey);
+      maskedApiKey = maskApiKey(plain);
+    }
 
     return NextResponse.json({
       name: user.name,
       email: user.email,
       settings: user.settings || {},
+      hasApiKey: !!user.geminiApiKey,
+      maskedApiKey,
+      tokenUsage: user.tokenUsage || {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        requests: [],
+      },
     });
   } catch (error) {
     console.error("Error fetching settings:", error);
@@ -43,7 +60,13 @@ export async function PATCH(request) {
     if (!session?.user) return UNAUTHORIZED_RESPONSE;
 
     const body = await request.json();
-    const { displayName, phone, coverLetterEmail, coverLetterWordCount } = body;
+    const {
+      displayName,
+      phone,
+      coverLetterEmail,
+      coverLetterWordCount,
+      geminiApiKey,
+    } = body;
 
     const update = {};
     if (displayName !== undefined) update["settings.displayName"] = displayName;
@@ -52,18 +75,36 @@ export async function PATCH(request) {
       update["settings.coverLetterEmail"] = coverLetterEmail;
     if (coverLetterWordCount !== undefined)
       update["settings.coverLetterWordCount"] = Number(coverLetterWordCount);
+    if (geminiApiKey !== undefined) {
+      update.geminiApiKey = geminiApiKey ? encryptApiKey(geminiApiKey) : "";
+    }
 
     const user = await User.findByIdAndUpdate(
       String(session.user.id),
       { $set: update },
       { new: true, runValidators: false },
-    ).select("name email settings");
+    ).select("name email settings geminiApiKey tokenUsage");
+
+    let maskedApiKey = "";
+    if (user.geminiApiKey) {
+      const plain = decryptApiKey(user.geminiApiKey);
+      maskedApiKey = maskApiKey(plain);
+    }
 
     return NextResponse.json({
       message: "Settings saved",
       name: user.name,
       email: user.email,
       settings: user.settings || {},
+      hasApiKey: !!user.geminiApiKey,
+      maskedApiKey,
+      tokenUsage: user.tokenUsage || {
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        requests: [],
+      },
     });
   } catch (error) {
     console.error("Error updating settings:", error);

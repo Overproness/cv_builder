@@ -45,7 +45,21 @@ export default function SignUpPage() {
         throw new Error(data.message || 'Something went wrong');
       }
 
-      router.push('/login');
+      // Auto sign-in after registration, then redirect to settings for onboarding
+      const { signIn } = await import('next-auth/react');
+      const signInResult = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
+        // Fallback to login page if auto sign-in fails
+        router.push('/login');
+      } else {
+        router.push('/settings');
+        router.refresh();
+      }
     } catch (err) {
       setError(err.message);
     } finally {

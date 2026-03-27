@@ -76,7 +76,9 @@ export default function DocumentsPage() {
   }, []);
 
   useEffect(() => {
-    fetchApplicationGroups();
+    if (debouncedSearch) {
+      fetchApplicationGroups();
+    }
   }, [debouncedSearch]);
 
   const fetchAll = async () => {

@@ -1,10 +1,25 @@
 import { tailorCVForJob } from "@/lib/gemini";
 import { generateLatex } from "@/lib/latex";
+import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
 // POST - Generate tailored resume from Master CV + Job Description
 export async function POST(request) {
   try {
+    let apiKey, userId;
+    try {
+      ({ apiKey, userId } = await getUserApiKey());
+    } catch (e) {
+      if (e.message === "UNAUTHORIZED")
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (e.message === "API_KEY_MISSING")
+        return NextResponse.json(
+          { error: "Please add your Gemini API key in Settings before generating." },
+          { status: 403 },
+        );
+      throw e;
+    }
+
     const { masterCV, jobDescription } = await request.json();
 
     if (!masterCV) {
@@ -22,7 +37,10 @@ export async function POST(request) {
     }
 
     // Tailor the CV for the job
-    const tailoredCV = await tailorCVForJob(masterCV, jobDescription);
+    const { data: tailoredCV, tokenUsage } = await tailorCVForJob(masterCV, jobDescription, apiKey);
+
+    // Record token usage
+    await recordTokenUsage(userId, "tailor", tokenUsage);
 
     // Enforce strict 1-page limits on the tailored CV before generating LaTeX
     // Cap experience to 3 entries with max 3 bullet points each
@@ -51,6 +69,7 @@ export async function POST(request) {
       message: "Resume tailored successfully",
       tailoredCV,
       latex,
+      tokenUsage,
     });
   } catch (error) {
     console.error("Error tailoring resume:", error);

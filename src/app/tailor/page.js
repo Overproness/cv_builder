@@ -30,6 +30,7 @@ import {
   LuFileQuestion,
   LuFileText,
   LuFiles,
+  LuKey,
   LuLoader,
   LuMessageSquare,
   LuBuilding2,
@@ -37,6 +38,7 @@ import {
   LuSave,
   LuSparkles,
   LuTrash2,
+  LuZap,
 } from "react-icons/lu";
 
 export default function TailorPage() {
@@ -91,6 +93,11 @@ export default function TailorPage() {
   // Toast
   const [message, setMessage] = useState(null);
 
+  // Token usage per generation
+  const [tokenUsage, setTokenUsage] = useState(null);
+  // Whether user has API key
+  const [hasApiKey, setHasApiKey] = useState(true); // assume true, check on load
+
   const {
     compileLatexOnServer,
     isEngineReady,
@@ -117,6 +124,7 @@ export default function TailorPage() {
         if (data.settings?.coverLetterWordCount) {
           setWordCount(data.settings.coverLetterWordCount);
         }
+        setHasApiKey(!!data.hasApiKey);
       }
     } catch {
       // silently ignore — defaults remain
@@ -172,6 +180,13 @@ export default function TailorPage() {
       showMessage("Please select a Master CV", "error");
       return;
     }
+    if (!hasApiKey) {
+      showMessage(
+        "Please add your Gemini API key in Settings before generating.",
+        "error",
+      );
+      return;
+    }
     const nonEmptyQuestionsCheck = questions.filter((q) => q.trim());
     if (!genResume && !genCoverLetter && nonEmptyQuestionsCheck.length === 0) {
       showMessage(
@@ -190,6 +205,7 @@ export default function TailorPage() {
     setTailoredLatex("");
     setCoverLetterContent("");
     setQuestionAnswers([]);
+    setTokenUsage(null);
 
     try {
       const promises = [];
@@ -201,7 +217,7 @@ export default function TailorPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ masterCV, jobDescription }),
           }).then((r) =>
-            r.json().then((d) => ({ type: "resume", data: d, ok: r.ok })),
+            r.json().then((d) => ({ type: "resume", data: d, ok: r.ok, status: r.status })),
           ),
         );
       }
@@ -219,7 +235,7 @@ export default function TailorPage() {
               wordCount,
             }),
           }).then((r) =>
-            r.json().then((d) => ({ type: "cl", data: d, ok: r.ok })),
+            r.json().then((d) => ({ type: "cl", data: d, ok: r.ok, status: r.status })),
           ),
         );
       }
@@ -238,21 +254,45 @@ export default function TailorPage() {
               companyInfo,
             }),
           }).then((r) =>
-            r.json().then((d) => ({ type: "qa", data: d, ok: r.ok })),
+            r.json().then((d) => ({ type: "qa", data: d, ok: r.ok, status: r.status })),
           ),
         );
       }
 
       const results = await Promise.all(promises);
       let success = false;
+      let aggregatedTokens = {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        cost: 0,
+      };
 
       for (const result of results) {
+        // Check for API key missing error
+        if (result.status === 403) {
+          showMessage(
+            result.data.error ||
+              "Please add your Gemini API key in Settings.",
+            "error",
+          );
+          setHasApiKey(false);
+          setLoading(false);
+          return;
+        }
+
         if (result.type === "resume") {
           if (result.ok && result.data.latex) {
             setTailoredLatex(result.data.latex);
             setTailoredCV(result.data.tailoredCV);
             success = true;
             if (genResume && !genCoverLetter) setActiveTab("resume");
+            if (result.data.tokenUsage) {
+              aggregatedTokens.inputTokens += result.data.tokenUsage.inputTokens || 0;
+              aggregatedTokens.outputTokens += result.data.tokenUsage.outputTokens || 0;
+              aggregatedTokens.totalTokens += result.data.tokenUsage.totalTokens || 0;
+              aggregatedTokens.cost += result.data.tokenUsage.cost || 0;
+            }
           } else {
             showMessage(
               result.data.error || "Failed to tailor resume",
@@ -276,6 +316,12 @@ export default function TailorPage() {
             setCoverLetterContent(assembled);
             success = true;
             if (!genResume && genCoverLetter) setActiveTab("coverletter");
+            if (result.data.tokenUsage) {
+              aggregatedTokens.inputTokens += result.data.tokenUsage.inputTokens || 0;
+              aggregatedTokens.outputTokens += result.data.tokenUsage.outputTokens || 0;
+              aggregatedTokens.totalTokens += result.data.tokenUsage.totalTokens || 0;
+              aggregatedTokens.cost += result.data.tokenUsage.cost || 0;
+            }
           } else {
             showMessage(
               result.data.error || "Failed to generate cover letter",
@@ -286,6 +332,12 @@ export default function TailorPage() {
           if (result.ok && result.data.answers) {
             setQuestionAnswers(result.data.answers);
             success = true;
+            if (result.data.tokenUsage) {
+              aggregatedTokens.inputTokens += result.data.tokenUsage.inputTokens || 0;
+              aggregatedTokens.outputTokens += result.data.tokenUsage.outputTokens || 0;
+              aggregatedTokens.totalTokens += result.data.tokenUsage.totalTokens || 0;
+              aggregatedTokens.cost += result.data.tokenUsage.cost || 0;
+            }
           } else {
             showMessage(
               result.data.error || "Failed to answer questions",
@@ -293,6 +345,10 @@ export default function TailorPage() {
             );
           }
         }
+      }
+
+      if (aggregatedTokens.totalTokens > 0) {
+        setTokenUsage(aggregatedTokens);
       }
 
       if (success) {
@@ -872,6 +928,23 @@ export default function TailorPage() {
                       </p>
                     )}
 
+                    {/* API Key Warning */}
+                    {!hasApiKey && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
+                        <LuKey className="h-4 w-4 text-destructive flex-shrink-0" />
+                        <span className="text-destructive">
+                          Add your{" "}
+                          <Link
+                            href="/settings"
+                            className="underline font-medium"
+                          >
+                            Gemini API key in Settings
+                          </Link>{" "}
+                          to use AI features.
+                        </span>
+                      </div>
+                    )}
+
                     <Button
                       onClick={handleGenerate}
                       disabled={
@@ -1293,6 +1366,30 @@ export default function TailorPage() {
                     {/* ── SAVE ALL BAR ── */}
                     {(tailoredLatex || coverLetterContent || questionAnswers.length > 0) && (
                       <div className="border-t border-border px-4 py-3">
+                        {/* Token usage for this generation */}
+                        {tokenUsage && (
+                          <div className="flex flex-wrap items-center gap-3 mb-3 p-2 rounded-lg bg-muted/50 text-xs">
+                            <span className="flex items-center gap-1 font-medium">
+                              <LuZap className="h-3.5 w-3.5 text-primary" />
+                              This generation:
+                            </span>
+                            <span>
+                              <span className="text-muted-foreground">Input:</span>{" "}
+                              {tokenUsage.inputTokens?.toLocaleString()}
+                            </span>
+                            <span>
+                              <span className="text-muted-foreground">Output:</span>{" "}
+                              {tokenUsage.outputTokens?.toLocaleString()}
+                            </span>
+                            <span className="font-medium">
+                              <span className="text-muted-foreground">Total:</span>{" "}
+                              {tokenUsage.totalTokens?.toLocaleString()} tokens
+                            </span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">
+                              ~${tokenUsage.cost < 0.01 ? tokenUsage.cost.toFixed(6) : tokenUsage.cost.toFixed(4)}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <Button
                             onClick={saveAll}

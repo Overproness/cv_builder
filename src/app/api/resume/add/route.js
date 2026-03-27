@@ -1,9 +1,24 @@
 import { addToExistingCV } from "@/lib/gemini";
+import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
 // POST - Add new experience or projects to existing CV
 export async function POST(request) {
   try {
+    let apiKey, userId;
+    try {
+      ({ apiKey, userId } = await getUserApiKey());
+    } catch (e) {
+      if (e.message === "UNAUTHORIZED")
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (e.message === "API_KEY_MISSING")
+        return NextResponse.json(
+          { error: "Please add your Gemini API key in Settings before generating." },
+          { status: 403 },
+        );
+      throw e;
+    }
+
     const {
       existingCV,
       newContent,
@@ -25,15 +40,19 @@ export async function POST(request) {
     }
 
     // Add the new content to the existing CV
-    const updatedCV = await addToExistingCV(
+    const { data: updatedCV, tokenUsage } = await addToExistingCV(
       existingCV,
       newContent,
       contentType,
+      apiKey,
     );
+
+    await recordTokenUsage(userId, "add", tokenUsage);
 
     return NextResponse.json({
       message: "Content added to CV successfully",
       updatedCV,
+      tokenUsage,
     });
   } catch (error) {
     console.error("Error adding content to CV:", error);

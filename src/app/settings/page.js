@@ -7,7 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
-import { LuCheck, LuLoader, LuSettings, LuUser } from "react-icons/lu";
+import {
+  LuCheck,
+  LuKey,
+  LuLoader,
+  LuSettings,
+  LuUser,
+  LuZap,
+} from "react-icons/lu";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -23,6 +30,16 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [coverLetterEmail, setCoverLetterEmail] = useState("");
   const [coverLetterWordCount, setCoverLetterWordCount] = useState(250);
+
+  // API Key
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [maskedApiKey, setMaskedApiKey] = useState("");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [savingKey, setSavingKey] = useState(false);
+
+  // Token usage
+  const [tokenUsage, setTokenUsage] = useState(null);
 
   useEffect(() => {
     fetchSettings();
@@ -41,6 +58,9 @@ export default function SettingsPage() {
           data.settings?.coverLetterEmail || data.email || "",
         );
         setCoverLetterWordCount(data.settings?.coverLetterWordCount || 250);
+        setHasApiKey(data.hasApiKey || false);
+        setMaskedApiKey(data.maskedApiKey || "");
+        setTokenUsage(data.tokenUsage || null);
       }
     } catch (err) {
       console.error(err);
@@ -78,6 +98,66 @@ export default function SettingsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveApiKey = async () => {
+    setSavingKey(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geminiApiKey }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHasApiKey(data.hasApiKey);
+        setMaskedApiKey(data.maskedApiKey || "");
+        setGeminiApiKey("");
+        setShowApiKeyInput(false);
+        showMessage("API key saved!", "success");
+      } else {
+        const d = await res.json();
+        showMessage(d.error || "Failed to save API key", "error");
+      }
+    } catch {
+      showMessage("Failed to save API key", "error");
+    } finally {
+      setSavingKey(false);
+    }
+  };
+
+  const handleRemoveApiKey = async () => {
+    setSavingKey(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geminiApiKey: "" }),
+      });
+      if (res.ok) {
+        setHasApiKey(false);
+        setMaskedApiKey("");
+        setGeminiApiKey("");
+        showMessage("API key removed.", "success");
+      }
+    } catch {
+      showMessage("Failed to remove API key", "error");
+    } finally {
+      setSavingKey(false);
+    }
+  };
+
+  const formatCost = (cost) => {
+    if (!cost || cost === 0) return "$0.00";
+    if (cost < 0.01) return `$${cost.toFixed(6)}`;
+    return `$${cost.toFixed(4)}`;
+  };
+
+  const formatTokens = (n) => {
+    if (!n) return "0";
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return n.toLocaleString();
   };
 
   if (loading) {
@@ -119,7 +199,7 @@ export default function SettingsPage() {
             <div>
               <h1 className="text-2xl font-bold">Profile &amp; Settings</h1>
               <p className="text-sm text-muted-foreground">
-                Manage your personal info used in cover letters
+                Manage your personal info, API key, and usage
               </p>
             </div>
           </div>
@@ -149,6 +229,223 @@ export default function SettingsPage() {
                   className="bg-muted/40 h-9 text-sm"
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Gemini API Key */}
+          <Card className="mb-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <LuKey className="h-4 w-4 text-primary" />
+                Gemini API Key
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Your own Google Gemini API key is required for AI features.{" "}
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  Get one free from Google AI Studio
+                </a>
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0 flex flex-col gap-3">
+              {hasApiKey && !showApiKeyInput ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30 text-sm font-mono">
+                    <LuCheck className="h-4 w-4 text-green-500" />
+                    <span>{maskedApiKey}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowApiKeyInput(true)}
+                  >
+                    Change
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemoveApiKey}
+                    disabled={savingKey}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      placeholder="Paste your Gemini API key (e.g. AIzaSy...)"
+                      value={geminiApiKey}
+                      onChange={(e) => setGeminiApiKey(e.target.value)}
+                      className="h-9 text-sm font-mono flex-1"
+                    />
+                    <Button
+                      onClick={handleSaveApiKey}
+                      disabled={savingKey || !geminiApiKey.trim()}
+                      size="sm"
+                    >
+                      {savingKey ? (
+                        <LuLoader className="animate-spin h-4 w-4" />
+                      ) : (
+                        "Save Key"
+                      )}
+                    </Button>
+                    {hasApiKey && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowApiKeyInput(false);
+                          setGeminiApiKey("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Your key is encrypted and stored securely. It is only used
+                    to call Gemini on your behalf.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Token Usage */}
+          <Card className="mb-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <LuZap className="h-4 w-4 text-primary" />
+                API Usage &amp; Cost
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Token usage and estimated cost (Gemini 2.0 Flash pricing:
+                $0.10/1M input, $0.40/1M output)
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {tokenUsage ? (
+                <div className="flex flex-col gap-4">
+                  {/* Summary stats */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-lg border border-border p-3 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        Total Tokens
+                      </p>
+                      <p className="text-lg font-bold text-primary">
+                        {formatTokens(tokenUsage.totalTokens)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        Input Tokens
+                      </p>
+                      <p className="text-lg font-bold">
+                        {formatTokens(tokenUsage.totalInputTokens)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        Output Tokens
+                      </p>
+                      <p className="text-lg font-bold">
+                        {formatTokens(tokenUsage.totalOutputTokens)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-3 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        Total Cost
+                      </p>
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {formatCost(tokenUsage.totalCost)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Recent requests */}
+                  {tokenUsage.requests && tokenUsage.requests.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">
+                        Recent Requests
+                      </p>
+                      <div className="max-h-60 overflow-y-auto border border-border rounded-lg">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/50 sticky top-0">
+                            <tr>
+                              <th className="text-left p-2 font-medium">
+                                Type
+                              </th>
+                              <th className="text-right p-2 font-medium">
+                                Input
+                              </th>
+                              <th className="text-right p-2 font-medium">
+                                Output
+                              </th>
+                              <th className="text-right p-2 font-medium">
+                                Total
+                              </th>
+                              <th className="text-right p-2 font-medium">
+                                Cost
+                              </th>
+                              <th className="text-right p-2 font-medium">
+                                Time
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...tokenUsage.requests]
+                              .reverse()
+                              .map((req, i) => (
+                                <tr
+                                  key={i}
+                                  className="border-t border-border hover:bg-muted/30"
+                                >
+                                  <td className="p-2 capitalize">
+                                    {req.type}
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    {req.inputTokens?.toLocaleString()}
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    {req.outputTokens?.toLocaleString()}
+                                  </td>
+                                  <td className="p-2 text-right font-medium">
+                                    {req.totalTokens?.toLocaleString()}
+                                  </td>
+                                  <td className="p-2 text-right text-green-600 dark:text-green-400">
+                                    {formatCost(req.cost)}
+                                  </td>
+                                  <td className="p-2 text-right text-muted-foreground">
+                                    {new Date(req.timestamp).toLocaleDateString(
+                                      undefined,
+                                      {
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      },
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No usage data yet. Start generating to see your token usage.
+                </p>
+              )}
             </CardContent>
           </Card>
 

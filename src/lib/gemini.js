@@ -1,14 +1,44 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-if (!process.env.GEMINI_API_KEY) {
-  console.warn("Warning: GEMINI_API_KEY not set. AI features will not work.");
+const MODEL_NAME = "gemini-2.0-flash";
+
+// Pricing per 1M tokens (Gemini 2.0 Flash)
+const PRICING = {
+  inputPerMillion: 0.10,
+  outputPerMillion: 0.40,
+};
+
+/**
+ * Create a Gemini model instance from a user-provided API key
+ */
+function getModel(apiKey) {
+  if (!apiKey) {
+    throw new Error(
+      "Gemini API key is required. Please add your API key in Settings.",
+    );
+  }
+  const genAI = new GoogleGenerativeAI(apiKey);
+  return genAI.getGenerativeModel({ model: MODEL_NAME });
 }
 
-const genAI = process.env.GEMINI_API_KEY
-  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-  : null;
-
-const model = genAI?.getGenerativeModel({ model: "gemini-flash-latest" });
+/**
+ * Extract token usage from a Gemini API response and calculate cost
+ */
+function extractTokenUsage(response) {
+  const usage = response.usageMetadata || {};
+  const inputTokens = usage.promptTokenCount || 0;
+  const outputTokens = usage.candidatesTokenCount || 0;
+  const totalTokens = usage.totalTokenCount || inputTokens + outputTokens;
+  const cost =
+    (inputTokens / 1_000_000) * PRICING.inputPerMillion +
+    (outputTokens / 1_000_000) * PRICING.outputPerMillion;
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    cost: Math.round(cost * 1_000_000) / 1_000_000, // round to 6 decimals
+  };
+}
 
 // Master CV JSON Schema for reference
 const CV_SCHEMA = `{
@@ -58,10 +88,8 @@ const CV_SCHEMA = `{
  * Parse raw text (resume/CV dump) into structured JSON with block-based extraction
  * This ensures completeness and consistency by extracting individual blocks/entries
  */
-export async function parseRawTextToCV(rawText) {
-  if (!model) {
-    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
-  }
+export async function parseRawTextToCV(rawText, apiKey) {
+  const model = getModel(apiKey);
 
   const prompt = `You are an expert resume parser. Extract the user's professional information from the following raw text and structure it into a clean JSON format.
 
@@ -94,6 +122,7 @@ OUTPUT (valid JSON only with ALL blocks included):`;
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
+    const tokenUsage = extractTokenUsage(response);
     let text = response.text();
 
     // Clean up the response - remove markdown code blocks if present
@@ -118,7 +147,7 @@ OUTPUT (valid JSON only with ALL blocks included):`;
       };
     if (!parsed.personal_info) parsed.personal_info = {};
 
-    return parsed;
+    return { data: parsed, tokenUsage };
   } catch (error) {
     console.error("Error parsing CV with Gemini:", error);
     throw new Error("Failed to parse CV. Please try again.");
@@ -133,10 +162,9 @@ export async function addToExistingCV(
   existingCV,
   newContent,
   contentType = "auto",
+  apiKey,
 ) {
-  if (!model) {
-    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
-  }
+  const model = getModel(apiKey);
 
   const prompt = `You are an expert resume editor. The user has an existing CV and wants to add new ${contentType === "auto" ? "experience or projects" : contentType} to it.
 
@@ -164,6 +192,7 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
+    const tokenUsage = extractTokenUsage(response);
     let text = response.text();
 
     // Clean up the response
@@ -187,7 +216,7 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
       };
     if (!parsed.personal_info) parsed.personal_info = existingCV.personal_info;
 
-    return parsed;
+    return { data: parsed, tokenUsage };
   } catch (error) {
     console.error("Error adding content to CV with Gemini:", error);
     throw new Error("Failed to add content to CV. Please try again.");
@@ -205,10 +234,9 @@ export async function generateCoverLetter(
   company = "",
   position = "",
   wordCount = 250,
+  apiKey,
 ) {
-  if (!model) {
-    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
-  }
+  const model = getModel(apiKey);
 
   const targetMin = Math.max(80, wordCount - 30);
   const targetMax = wordCount + 30;
@@ -252,6 +280,7 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
     });
 
     const response = await result.response;
+    const tokenUsage = extractTokenUsage(response);
     let text = response.text().trim();
 
     // Remove any markdown code blocks if present
@@ -266,9 +295,12 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
       .replace(/^Sincerely[,.]?\s*[\s\S]*$/im, "")
       .trim();
 
-    return text;
+    return { data: text, tokenUsage };
   } catch (error) {
     console.error("Error generating cover letter with Gemini:", error);
+    if (error?.status === 429) {
+      throw new Error("Rate limit exceeded. Please wait a moment and try again.");
+    }
     throw new Error("Failed to generate cover letter. Please try again.");
   }
 }
@@ -277,10 +309,8 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
  * Tailor a Master CV for a specific job description using block-based selection
  * This ensures consistent and deterministic results across multiple runs
  */
-export async function tailorCVForJob(masterCV, jobDescription) {
-  if (!model) {
-    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
-  }
+export async function tailorCVForJob(masterCV, jobDescription, apiKey) {
+  const model = getModel(apiKey);
 
   // Count blocks in master CV for validation
   const totalBlocks =
@@ -369,6 +399,7 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
     });
 
     const response = await result.response;
+    const tokenUsage = extractTokenUsage(response);
     let text = response.text();
 
     // Clean up the response
@@ -393,9 +424,12 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
     if (!parsed.personal_info) parsed.personal_info = masterCV.personal_info;
     if (!parsed.ats_keywords) parsed.ats_keywords = [];
 
-    return parsed;
+    return { data: parsed, tokenUsage };
   } catch (error) {
     console.error("Error tailoring CV with Gemini:", error);
+    if (error?.status === 429) {
+      throw new Error("Rate limit exceeded. Please wait a moment and try again.");
+    }
     throw new Error("Failed to tailor CV. Please try again.");
   }
 }
@@ -409,10 +443,9 @@ export async function answerApplicationQuestions(
   jobDescription,
   questions,
   companyInfo = "",
+  apiKey,
 ) {
-  if (!model) {
-    throw new Error("Gemini API not configured. Please set GEMINI_API_KEY.");
-  }
+  const model = getModel(apiKey);
 
   const prompt = `You are an expert career coach helping a job applicant answer employer-specific application questions. Use the applicant's CV, the job description, and the company information to craft compelling, authentic answers.
 
@@ -451,6 +484,7 @@ Example: [{"question": "Why do you want to work here?", "answer": "..."}]`;
     });
 
     const response = await result.response;
+    const tokenUsage = extractTokenUsage(response);
     let text = response.text().trim();
 
     text = text
@@ -464,12 +498,16 @@ Example: [{"question": "Why do you want to work here?", "answer": "..."}]`;
       throw new Error("Expected array of Q&A objects");
     }
 
-    return parsed.map((item) => ({
+    const data = parsed.map((item) => ({
       question: item.question || "",
       answer: item.answer || "",
     }));
+    return { data, tokenUsage };
   } catch (error) {
     console.error("Error answering questions with Gemini:", error);
+    if (error?.status === 429) {
+      throw new Error("Rate limit exceeded. Please wait a moment and try again.");
+    }
     throw new Error("Failed to answer questions. Please try again.");
   }
 }

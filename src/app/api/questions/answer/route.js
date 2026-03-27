@@ -1,8 +1,23 @@
 import { answerApplicationQuestions } from "@/lib/gemini";
+import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
+    let apiKey, userId;
+    try {
+      ({ apiKey, userId } = await getUserApiKey());
+    } catch (e) {
+      if (e.message === "UNAUTHORIZED")
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (e.message === "API_KEY_MISSING")
+        return NextResponse.json(
+          { error: "Please add your Gemini API key in Settings before generating." },
+          { status: 403 },
+        );
+      throw e;
+    }
+
     const { masterCV, jobDescription, questions, companyInfo } =
       await request.json();
 
@@ -20,16 +35,20 @@ export async function POST(request) {
       );
     }
 
-    const answers = await answerApplicationQuestions(
+    const { data: answers, tokenUsage } = await answerApplicationQuestions(
       masterCV,
       jobDescription || "",
       questions,
       companyInfo || "",
+      apiKey,
     );
+
+    await recordTokenUsage(userId, "questions", tokenUsage);
 
     return NextResponse.json({
       message: "Questions answered successfully",
       answers,
+      tokenUsage,
     });
   } catch (error) {
     console.error("Error answering questions:", error);
