@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LuLoader, LuLock, LuMail, LuSparkles, LuUser } from "react-icons/lu";
+import { LuEye, LuEyeOff, LuLoader, LuLock, LuMail, LuSparkles, LuUser } from "react-icons/lu";
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -25,6 +25,7 @@ export default function SignUpPage() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const handleChange = (e) => {
@@ -144,13 +145,21 @@ export default function SignUpPage() {
                     <Input
                       id="password"
                       name="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       placeholder="Create a password"
                       required
-                      className="pl-10"
+                      className="pl-10 pr-10"
                       value={formData.password}
                       onChange={handleChange}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <LuEyeOff className="h-4 w-4" /> : <LuEye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 

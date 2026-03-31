@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL_NAME = "gemini-2.0-flash";
+const MODEL_NAME = "gemini-2.5-flash-lite";
 
 // Pricing per 1M tokens (Gemini 2.0 Flash)
 const PRICING = {
@@ -35,6 +35,16 @@ function rethrowIfApiKeyError(error) {
   ) {
     throw new Error(
       "Your Gemini API key is invalid. Please update it in Settings.",
+    );
+  }
+  if (
+    error?.status === 429 ||
+    msg.includes("429") ||
+    msg.includes("Too Many Requests") ||
+    msg.includes("quota")
+  ) {
+    throw new Error(
+      "Gemini API quota exceeded. You've hit your rate limit — please wait a moment and try again, or check your plan & billing in Google AI Studio.",
     );
   }
 }

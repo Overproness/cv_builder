@@ -30,11 +30,22 @@ export async function GET(request) {
 
     // Return all CVs if requested (for multi-CV selection)
     if (all === "true") {
+      const includeLatest = searchParams.get("includeLatest") === "true";
       const cvs = await CV.find(
         { userId },
         { personal_info: 1, cv_name: 1, updatedAt: 1, createdAt: 1 },
         { sort: { updatedAt: -1 } },
       ).lean();
+
+      // Optionally fetch the full data for the most recent CV in one roundtrip
+      if (includeLatest && cvs.length > 0) {
+        const latestFull = await CV.findOne(
+          { _id: cvs[0]._id, userId },
+          {},
+        ).lean();
+        return NextResponse.json({ list: cvs, latest: latestFull });
+      }
+
       return NextResponse.json(cvs);
     }
 

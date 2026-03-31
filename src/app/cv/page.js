@@ -71,12 +71,21 @@ export default function CVPage() {
 
   const fetchAllCVs = async () => {
     try {
-      const res = await fetch("/api/cv?all=true");
+      const res = await fetch("/api/cv?all=true&includeLatest=true");
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        // New shape: { list, latest } — load both in a single roundtrip
+        if (data && data.list) {
+          setAllCVs(data.list);
+          if (data.latest && data.latest.personal_info) {
+            setCV(data.latest);
+            setCvId(data.latest._id);
+            setCvName(data.latest.cv_name || "");
+            setMode("structured");
+          }
+        } else if (Array.isArray(data) && data.length > 0) {
+          // Fallback: old shape (plain array)
           setAllCVs(data);
-          // Load the most recent CV
           await switchToCV(data[0]._id);
         }
       }
@@ -245,7 +254,7 @@ export default function CVPage() {
 
   const showMessage = (text, type) => {
     setMessage({ text, type });
-    setTimeout(() => setMessage(null), 4000);
+    setTimeout(() => setMessage(null), type === "error" ? 8000 : 4000);
   };
 
   const updatePersonalInfo = (field, value) => {

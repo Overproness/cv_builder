@@ -974,6 +974,18 @@ export default function TailorPage() {
                       </div>
                     )}
 
+                    {/* Show how many Gemini API calls will fire */}
+                    {!loading && (() => {
+                      const callCount =
+                        (genResume ? 1 : 0) +
+                        (genCoverLetter ? 1 : 0) +
+                        (questions.some((q) => q.trim()) ? 1 : 0);
+                      return callCount > 0 ? (
+                        <p className="text-xs text-muted-foreground text-center mt-1">
+                          {callCount} Gemini API {callCount === 1 ? "call" : "calls"} will be made
+                        </p>
+                      ) : null;
+                    })()}
                     <Button
                       onClick={handleGenerate}
                       disabled={

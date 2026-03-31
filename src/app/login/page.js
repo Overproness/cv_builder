@@ -10,12 +10,13 @@ import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { LuLoader, LuLock, LuMail, LuSparkles } from 'react-icons/lu';
+import { LuEye, LuEyeOff, LuLoader, LuLock, LuMail, LuSparkles } from 'react-icons/lu';
 
 export default function LoginPage() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState(null);
   const [isPending, setIsPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,11 +83,19 @@ export default function LoginPage() {
                     <Input
                       id="password"
                       name="password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       placeholder="Enter your password"
                       required
-                      className="pl-10"
+                      className="pl-10 pr-10"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <LuEyeOff className="h-4 w-4" /> : <LuEye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
                 
