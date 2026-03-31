@@ -22,6 +22,24 @@ function getModel(apiKey) {
 }
 
 /**
+ * Detect invalid-API-key errors from Google Generative AI and rethrow with
+ * a user-friendly message so the frontend can prompt the user to update their
+ * key in Settings rather than showing a generic failure message.
+ */
+function rethrowIfApiKeyError(error) {
+  const msg = error?.message || "";
+  if (
+    error?.status === 400 ||
+    msg.includes("API_KEY_INVALID") ||
+    msg.includes("API key not valid")
+  ) {
+    throw new Error(
+      "Your Gemini API key is invalid. Please update it in Settings.",
+    );
+  }
+}
+
+/**
  * Extract token usage from a Gemini API response and calculate cost
  */
 function extractTokenUsage(response) {
@@ -150,6 +168,7 @@ OUTPUT (valid JSON only with ALL blocks included):`;
     return { data: parsed, tokenUsage };
   } catch (error) {
     console.error("Error parsing CV with Gemini:", error);
+    rethrowIfApiKeyError(error);
     throw new Error("Failed to parse CV. Please try again.");
   }
 }
@@ -219,6 +238,7 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
     return { data: parsed, tokenUsage };
   } catch (error) {
     console.error("Error adding content to CV with Gemini:", error);
+    rethrowIfApiKeyError(error);
     throw new Error("Failed to add content to CV. Please try again.");
   }
 }
@@ -298,6 +318,7 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
     return { data: text, tokenUsage };
   } catch (error) {
     console.error("Error generating cover letter with Gemini:", error);
+    rethrowIfApiKeyError(error);
     if (error?.status === 429) {
       throw new Error(
         "Rate limit exceeded. Please wait a moment and try again.",
@@ -429,6 +450,7 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
     return { data: parsed, tokenUsage };
   } catch (error) {
     console.error("Error tailoring CV with Gemini:", error);
+    rethrowIfApiKeyError(error);
     if (error?.status === 429) {
       throw new Error(
         "Rate limit exceeded. Please wait a moment and try again.",
@@ -509,6 +531,7 @@ Example: [{"question": "Why do you want to work here?", "answer": "..."}]`;
     return { data, tokenUsage };
   } catch (error) {
     console.error("Error answering questions with Gemini:", error);
+    rethrowIfApiKeyError(error);
     if (error?.status === 429) {
       throw new Error(
         "Rate limit exceeded. Please wait a moment and try again.",
