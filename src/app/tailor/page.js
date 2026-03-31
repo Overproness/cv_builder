@@ -216,14 +216,12 @@ export default function TailorPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ masterCV, jobDescription }),
           }).then((r) =>
-            r
-              .json()
-              .then((d) => ({
-                type: "resume",
-                data: d,
-                ok: r.ok,
-                status: r.status,
-              })),
+            r.json().then((d) => ({
+              type: "resume",
+              data: d,
+              ok: r.ok,
+              status: r.status,
+            })),
           ),
         );
       }
@@ -241,14 +239,12 @@ export default function TailorPage() {
               wordCount,
             }),
           }).then((r) =>
-            r
-              .json()
-              .then((d) => ({
-                type: "cl",
-                data: d,
-                ok: r.ok,
-                status: r.status,
-              })),
+            r.json().then((d) => ({
+              type: "cl",
+              data: d,
+              ok: r.ok,
+              status: r.status,
+            })),
           ),
         );
       }
@@ -267,14 +263,12 @@ export default function TailorPage() {
               companyInfo,
             }),
           }).then((r) =>
-            r
-              .json()
-              .then((d) => ({
-                type: "qa",
-                data: d,
-                ok: r.ok,
-                status: r.status,
-              })),
+            r.json().then((d) => ({
+              type: "qa",
+              data: d,
+              ok: r.ok,
+              status: r.status,
+            })),
           ),
         );
       }
@@ -975,17 +969,19 @@ export default function TailorPage() {
                     )}
 
                     {/* Show how many Gemini API calls will fire */}
-                    {!loading && (() => {
-                      const callCount =
-                        (genResume ? 1 : 0) +
-                        (genCoverLetter ? 1 : 0) +
-                        (questions.some((q) => q.trim()) ? 1 : 0);
-                      return callCount > 0 ? (
-                        <p className="text-xs text-muted-foreground text-center mt-1">
-                          {callCount} Gemini API {callCount === 1 ? "call" : "calls"} will be made
-                        </p>
-                      ) : null;
-                    })()}
+                    {!loading &&
+                      (() => {
+                        const callCount =
+                          (genResume ? 1 : 0) +
+                          (genCoverLetter ? 1 : 0) +
+                          (questions.some((q) => q.trim()) ? 1 : 0);
+                        return callCount > 0 ? (
+                          <p className="text-xs text-muted-foreground text-center mt-1">
+                            {callCount} Gemini API{" "}
+                            {callCount === 1 ? "call" : "calls"} will be made
+                          </p>
+                        ) : null;
+                      })()}
                     <Button
                       onClick={handleGenerate}
                       disabled={

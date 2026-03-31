@@ -15,7 +15,15 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LuEye, LuEyeOff, LuLoader, LuLock, LuMail, LuSparkles, LuUser } from "react-icons/lu";
+import {
+  LuEye,
+  LuEyeOff,
+  LuLoader,
+  LuLock,
+  LuMail,
+  LuSparkles,
+  LuUser,
+} from "react-icons/lu";
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -158,7 +166,11 @@ export default function SignUpPage() {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
                     >
-                      {showPassword ? <LuEyeOff className="h-4 w-4" /> : <LuEye className="h-4 w-4" />}
+                      {showPassword ? (
+                        <LuEyeOff className="h-4 w-4" />
+                      ) : (
+                        <LuEye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </div>
