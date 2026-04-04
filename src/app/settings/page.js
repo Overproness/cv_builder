@@ -14,6 +14,7 @@ import {
   LuSettings,
   LuUser,
   LuZap,
+  LuGauge,
 } from "react-icons/lu";
 
 export default function SettingsPage() {
@@ -38,6 +39,10 @@ export default function SettingsPage() {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
 
+  // Rate limiting
+  const [rateLimitTier, setRateLimitTier] = useState("free");
+  const [customRateLimit, setCustomRateLimit] = useState(15);
+
   // Token usage
   const [tokenUsage, setTokenUsage] = useState(null);
 
@@ -58,6 +63,8 @@ export default function SettingsPage() {
           data.settings?.coverLetterEmail || data.email || "",
         );
         setCoverLetterWordCount(data.settings?.coverLetterWordCount || 250);
+        setRateLimitTier(data.settings?.rateLimitTier || "free");
+        setCustomRateLimit(data.settings?.customRateLimit || 15);
         setHasApiKey(data.hasApiKey || false);
         setMaskedApiKey(data.maskedApiKey || "");
         setTokenUsage(data.tokenUsage || null);
@@ -85,6 +92,8 @@ export default function SettingsPage() {
           phone,
           coverLetterEmail,
           coverLetterWordCount: Number(coverLetterWordCount),
+          rateLimitTier,
+          customRateLimit: Number(customRateLimit),
         }),
       });
       if (res.ok) {
@@ -312,6 +321,87 @@ export default function SettingsPage() {
                   <p className="text-xs text-muted-foreground">
                     Your key is encrypted and stored securely. It is only used
                     to call Gemini on your behalf.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Rate Limiting */}
+          <Card className="mb-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <LuGauge className="h-4 w-4 text-primary" />
+                Rate Limiting
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Control how fast requests are sent to the Gemini API. Free tier
+                users should use the Free Tier setting to avoid 429 errors.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0 flex flex-col gap-4">
+              {/* Tier selector */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRateLimitTier("free")}
+                  className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors text-left ${
+                    rateLimitTier === "free"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-transparent text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  <div className="font-semibold">Free Tier</div>
+                  <div className="text-xs opacity-80 mt-0.5">
+                    15 RPM — requests sent sequentially
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRateLimitTier("custom")}
+                  className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors text-left ${
+                    rateLimitTier === "custom"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-transparent text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  <div className="font-semibold">Custom</div>
+                  <div className="text-xs opacity-80 mt-0.5">
+                    Set your own RPM limit
+                  </div>
+                </button>
+              </div>
+
+              {rateLimitTier === "free" && (
+                <p className="text-xs text-muted-foreground rounded-lg bg-muted/40 border border-border px-3 py-2">
+                  When generating, requests will be sent one at a time with a{" "}
+                  <strong>4-second gap</strong> between them to stay within the
+                  15 RPM free tier limit.
+                </p>
+              )}
+
+              {rateLimitTier === "custom" && (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="customRpm" className="text-xs">
+                    Requests per minute (RPM)
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="customRpm"
+                      type="number"
+                      min={1}
+                      max={3600}
+                      step={1}
+                      value={customRateLimit}
+                      onChange={(e) => setCustomRateLimit(e.target.value)}
+                      className="h-9 text-sm max-w-[140px]"
+                    />
+                    <span className="text-xs text-muted-foreground">RPM</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {Number(customRateLimit) >= 60
+                      ? "High RPM — requests will be sent in parallel (no delay)."
+                      : `Requests will be delayed by ~${Math.ceil(60000 / Math.max(1, Number(customRateLimit)))}ms between each call.`}
                   </p>
                 </div>
               )}

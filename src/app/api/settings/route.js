@@ -66,6 +66,8 @@ export async function PATCH(request) {
       coverLetterEmail,
       coverLetterWordCount,
       geminiApiKey,
+      rateLimitTier,
+      customRateLimit,
     } = body;
 
     const update = {};
@@ -75,6 +77,10 @@ export async function PATCH(request) {
       update["settings.coverLetterEmail"] = coverLetterEmail;
     if (coverLetterWordCount !== undefined)
       update["settings.coverLetterWordCount"] = Number(coverLetterWordCount);
+    if (rateLimitTier !== undefined)
+      update["settings.rateLimitTier"] = rateLimitTier;
+    if (customRateLimit !== undefined)
+      update["settings.customRateLimit"] = Math.max(1, Math.min(3600, Number(customRateLimit)));
     if (geminiApiKey !== undefined) {
       update.geminiApiKey = geminiApiKey ? encryptApiKey(geminiApiKey) : "";
     }

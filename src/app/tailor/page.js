@@ -69,6 +69,11 @@ export default function TailorPage() {
     coverLetterEmail: "",
   });
 
+  // Rate limiting
+  const [rateLimitTier, setRateLimitTier] = useState("free");
+  const [customRateLimit, setCustomRateLimit] = useState(15);
+  const FREE_TIER_RPM = 15;
+
   // Results
   const [tailoredLatex, setTailoredLatex] = useState("");
   const [tailoredCV, setTailoredCV] = useState(null);
@@ -123,6 +128,8 @@ export default function TailorPage() {
         if (data.settings?.coverLetterWordCount) {
           setWordCount(data.settings.coverLetterWordCount);
         }
+        setRateLimitTier(data.settings?.rateLimitTier || "free");
+        setCustomRateLimit(data.settings?.customRateLimit || 15);
         setHasApiKey(!!data.hasApiKey);
       }
     } catch {
@@ -207,10 +214,10 @@ export default function TailorPage() {
     setTokenUsage(null);
 
     try {
-      const promises = [];
+      const requestFns = [];
 
       if (genResume) {
-        promises.push(
+        requestFns.push(() =>
           fetch("/api/resume/tailor", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -227,7 +234,7 @@ export default function TailorPage() {
       }
 
       if (genCoverLetter) {
-        promises.push(
+        requestFns.push(() =>
           fetch("/api/cover-letter/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -252,7 +259,7 @@ export default function TailorPage() {
       // If user has questions, answer them
       const nonEmptyQuestions = questions.filter((q) => q.trim());
       if (nonEmptyQuestions.length > 0) {
-        promises.push(
+        requestFns.push(() =>
           fetch("/api/questions/answer", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -273,7 +280,24 @@ export default function TailorPage() {
         );
       }
 
-      const results = await Promise.all(promises);
+      // Determine whether to use sequential (rate-limited) or parallel requests
+      const rpm =
+        rateLimitTier === "free" ? FREE_TIER_RPM : Math.max(1, Number(customRateLimit));
+      const useSequential = requestFns.length > 1 && rpm < 60;
+      const delayMs = Math.ceil(60000 / rpm);
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      let results;
+      if (useSequential) {
+        results = [];
+        for (let i = 0; i < requestFns.length; i++) {
+          if (i > 0) await sleep(delayMs);
+          results.push(await requestFns[i]());
+        }
+      } else {
+        results = await Promise.all(requestFns.map((fn) => fn()));
+      }
       let success = false;
       let aggregatedTokens = {
         inputTokens: 0,

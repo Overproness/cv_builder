@@ -40,6 +40,9 @@ const UserSchema = new mongoose.Schema(
       phone: { type: String, default: "" },
       coverLetterEmail: { type: String, default: "" },
       coverLetterWordCount: { type: Number, default: 250 },
+      // Rate limiting: 'free' = free tier (15 RPM), 'custom' = user-defined RPM
+      rateLimitTier: { type: String, enum: ["free", "custom"], default: "free" },
+      customRateLimit: { type: Number, default: 15, min: 1, max: 3600 },
     },
     // Token usage tracking
     tokenUsage: {
