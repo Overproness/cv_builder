@@ -80,7 +80,10 @@ export async function PATCH(request) {
     if (rateLimitTier !== undefined)
       update["settings.rateLimitTier"] = rateLimitTier;
     if (customRateLimit !== undefined)
-      update["settings.customRateLimit"] = Math.max(1, Math.min(3600, Number(customRateLimit)));
+      update["settings.customRateLimit"] = Math.max(
+        1,
+        Math.min(3600, Number(customRateLimit)),
+      );
     if (geminiApiKey !== undefined) {
       update.geminiApiKey = geminiApiKey ? encryptApiKey(geminiApiKey) : "";
     }

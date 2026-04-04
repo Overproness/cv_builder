@@ -9,12 +9,12 @@ import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import {
   LuCheck,
+  LuGauge,
   LuKey,
   LuLoader,
   LuSettings,
   LuUser,
   LuZap,
-  LuGauge,
 } from "react-icons/lu";
 
 export default function SettingsPage() {

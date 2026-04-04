@@ -282,7 +282,9 @@ export default function TailorPage() {
 
       // Determine whether to use sequential (rate-limited) or parallel requests
       const rpm =
-        rateLimitTier === "free" ? FREE_TIER_RPM : Math.max(1, Number(customRateLimit));
+        rateLimitTier === "free"
+          ? FREE_TIER_RPM
+          : Math.max(1, Number(customRateLimit));
       const useSequential = requestFns.length > 1 && rpm < 60;
       const delayMs = Math.ceil(60000 / rpm);
 
