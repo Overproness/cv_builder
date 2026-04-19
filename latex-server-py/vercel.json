@@ -3,13 +3,15 @@
         {
             "src": "api/index.py",
             "use": "@vercel/python",
-            "config": { "maxDuration": 60 }
+            "config": {
+                "maxDuration": 60
+            }
         }
     ],
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "/api/index"
+            "dest": "/api/index.py"
         }
     ]
 }
