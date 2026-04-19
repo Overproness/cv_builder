@@ -1,13 +1,16 @@
 {
-  "buildCommand": "bash build.sh",
-  "functions": {
-    "api/index.py": {
-      "runtime": "python3.12",
-      "maxDuration": 60,
-      "includeFiles": "bin/tectonic"
-    }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
-  ]
+    "buildCommand": "bash build.sh",
+    "functions": {
+        "api/index.py": {
+            "runtime": "python3.12",
+            "maxDuration": 60,
+            "includeFiles": "bin/tectonic"
+        }
+    },
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/api/index"
+        }
+    ]
 }
