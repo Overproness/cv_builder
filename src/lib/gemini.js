@@ -462,11 +462,17 @@ export async function tailorCVForJob(
     (masterCV.experience?.length || 0) +
     (masterCV.projects?.length || 0);
 
-  const { additionalProjects } = estimateRoomForMoreProjects({
+  const { additionalProjects, additionalExperience } = estimateRoomForMoreProjects({
     ...masterCV,
-    experience: (masterCV.experience || []).slice(0, 3),
+    experience: (masterCV.experience || []).slice(0, 2),
     projects: (masterCV.projects || []).slice(0, 2),
   });
+
+  // Determine experience and project counts based on available space (target 90%)
+  const targetExperience = Math.min(
+    masterCV.experience?.length || 0,
+    Math.max(2, 2 + additionalExperience),
+  );
 
   // Determine project count based on available space
   const targetProjects = Math.min(
@@ -488,12 +494,12 @@ export async function tailorCVForJob(
   const prompt = `You are an expert resume consultant. Analyze the provided Master CV JSON against the Job Description and create a tailored resume that maximizes relevance.
 
 CRITICAL 1-PAGE RESUME REQUIREMENT:
-- Aim for MAXIMUM 400 words total (strict 1-page letter paper at 11pt)
-- Be EXTREMELY selective — choose only the most impactful content
-- Limit to 2-3 experience entries with MAXIMUM 2 bullet points each
+- TARGET 85–90% page usage — the resume MUST feel full, not sparse
+- Be selective but aim to MAXIMIZE relevant content within the 1-page limit
+- Include ${targetExperience} experience entries, each with 2–3 bullet points
 - Include ${targetProjects} project entries with MAXIMUM 2 bullet points each
 - Include ALL education entries (usually 1-2)
-- Fewer, stronger bullet points are always better than more, weaker ones
+- Adding more high-quality content is always better than leaving blank space
 
 PROJECT HEADING LINE-WIDTH CONSTRAINT:
 - Each project has a "name" and "technologies" field displayed on the SAME LINE
@@ -523,7 +529,7 @@ CRITICAL REQUIREMENTS:
    a. Score each experience/project block by counting keyword matches with job description
    b. Prioritize blocks with highest relevance scores
    c. Include ALL education blocks (always relevant)
-   d. Include 2-3 experience blocks (select highest scoring)
+   d. Include ${targetExperience} experience blocks (select highest scoring)
    e. Include ${targetProjects} project blocks (select highest scoring)
 3. For selected blocks, tailor bullet points to emphasize job-relevant keywords
 4. LIMIT each experience/project to 2-3 most impactful bullet points only
@@ -600,6 +606,19 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
           `Resume exceeds 1 page (${pageEstimate.usagePercent}% full, ${pageEstimate.overflow} lines over). ` +
             `Reduce content: remove the least relevant bullet point from each experience/project, ` +
             `or remove the least relevant project entirely.`,
+        );
+      } else if (pageEstimate.usagePercent < 85) {
+        const expCount = parsed.experience?.length || 0;
+        const projCount = parsed.projects?.length || 0;
+        const canAddExp = expCount < targetExperience;
+        const canAddProj = projCount < targetProjects;
+        const suggestions = [];
+        if (canAddExp) suggestions.push(`add ${targetExperience - expCount} more experience entry/entries from the Master CV (currently have ${expCount}, target is ${targetExperience})`);
+        if (canAddProj) suggestions.push(`add ${targetProjects - projCount} more project entry/entries from the Master CV (currently have ${projCount}, target is ${targetProjects})`);
+        if (suggestions.length === 0) suggestions.push(`expand existing bullet points with more detail or add a 3rd bullet point to 1-2 entries`);
+        issues.push(
+          `Resume is only ${pageEstimate.usagePercent}% full (${pageEstimate.totalLines}/${pageEstimate.maxLines} lines). ` +
+            `Target is 85–90% page usage. To fill the page: ${suggestions.join("; ")}.`,
         );
       }
 

@@ -245,13 +245,19 @@ export function estimateCoverLetterPageUsage(fullContent) {
  */
 export function estimateRoomForMoreProjects(cvData) {
   const { totalLines, maxLines } = estimatePageUsage(cvData);
-  const remaining = maxLines - totalLines;
+  const TARGET_FILL = 0.9; // aim for 90% page usage
+  const targetLines = maxLines * TARGET_FILL;
+  const remaining = targetLines - totalLines;
   const linesPerProject =
     COST.projectHeading + 2 * COST.bulletPoint + COST.bulletListEnd;
+  const linesPerExperience =
+    COST.subheading + 2 * COST.bulletPoint + COST.bulletListEnd;
   return {
     remainingLines: Math.round(remaining * 10) / 10,
     additionalProjects: Math.max(0, Math.floor(remaining / linesPerProject)),
+    additionalExperience: Math.max(0, Math.floor(remaining / linesPerExperience)),
     linesPerProject: Math.round(linesPerProject * 10) / 10,
+    linesPerExperience: Math.round(linesPerExperience * 10) / 10,
   };
 }
 
