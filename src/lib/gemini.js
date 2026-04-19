@@ -462,11 +462,12 @@ export async function tailorCVForJob(
     (masterCV.experience?.length || 0) +
     (masterCV.projects?.length || 0);
 
-  const { additionalProjects, additionalExperience } = estimateRoomForMoreProjects({
-    ...masterCV,
-    experience: (masterCV.experience || []).slice(0, 2),
-    projects: (masterCV.projects || []).slice(0, 2),
-  });
+  const { additionalProjects, additionalExperience } =
+    estimateRoomForMoreProjects({
+      ...masterCV,
+      experience: (masterCV.experience || []).slice(0, 2),
+      projects: (masterCV.projects || []).slice(0, 2),
+    });
 
   // Determine experience and project counts based on available space (target 90%)
   const targetExperience = Math.min(
@@ -613,9 +614,18 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
         const canAddExp = expCount < targetExperience;
         const canAddProj = projCount < targetProjects;
         const suggestions = [];
-        if (canAddExp) suggestions.push(`add ${targetExperience - expCount} more experience entry/entries from the Master CV (currently have ${expCount}, target is ${targetExperience})`);
-        if (canAddProj) suggestions.push(`add ${targetProjects - projCount} more project entry/entries from the Master CV (currently have ${projCount}, target is ${targetProjects})`);
-        if (suggestions.length === 0) suggestions.push(`expand existing bullet points with more detail or add a 3rd bullet point to 1-2 entries`);
+        if (canAddExp)
+          suggestions.push(
+            `add ${targetExperience - expCount} more experience entry/entries from the Master CV (currently have ${expCount}, target is ${targetExperience})`,
+          );
+        if (canAddProj)
+          suggestions.push(
+            `add ${targetProjects - projCount} more project entry/entries from the Master CV (currently have ${projCount}, target is ${targetProjects})`,
+          );
+        if (suggestions.length === 0)
+          suggestions.push(
+            `expand existing bullet points with more detail or add a 3rd bullet point to 1-2 entries`,
+          );
         issues.push(
           `Resume is only ${pageEstimate.usagePercent}% full (${pageEstimate.totalLines}/${pageEstimate.maxLines} lines). ` +
             `Target is 85–90% page usage. To fill the page: ${suggestions.join("; ")}.`,

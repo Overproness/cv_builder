@@ -255,7 +255,10 @@ export function estimateRoomForMoreProjects(cvData) {
   return {
     remainingLines: Math.round(remaining * 10) / 10,
     additionalProjects: Math.max(0, Math.floor(remaining / linesPerProject)),
-    additionalExperience: Math.max(0, Math.floor(remaining / linesPerExperience)),
+    additionalExperience: Math.max(
+      0,
+      Math.floor(remaining / linesPerExperience),
+    ),
     linesPerProject: Math.round(linesPerProject * 10) / 10,
     linesPerExperience: Math.round(linesPerExperience * 10) / 10,
   };
