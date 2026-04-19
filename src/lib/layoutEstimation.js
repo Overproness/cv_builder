@@ -38,15 +38,15 @@ const BODY_CHARS_PER_LINE = 90;
 // ─── Vertical space consumed by each element (in "line units") ──────────────
 
 const COST = {
-  sectionHeading: 2.5, // \section{} + titlerule + vspace
-  subheading: 2.8, // 2-row tabular* + vspace(-7pt) + surrounding space
-  projectHeading: 1.8, // 1-row tabular* + vspace(-7pt)
-  bulletPoint: 1.1, // \resumeItem + vspace(-2pt)
-  bulletListEnd: 0.5, // \resumeItemListEnd vspace(-5pt)
-  subheadingListGap: 0.8, // space between list items
-  nameHeader: 3.5, // \Huge name + contact line + vspace
-  skillCategory: 1.0, // one \textbf{Cat}{: ...} line
-  skillSectionOverhead: 1.5, // section heading + itemize overhead
+  sectionHeading: 2.0, // \section{} + titlerule + vspace
+  subheading: 2.2, // 2-row tabular* + vspace(-7pt) + surrounding space
+  projectHeading: 1.5, // 1-row tabular* + vspace(-7pt)
+  bulletPoint: 1.0, // \resumeItem + vspace(-2pt)
+  bulletListEnd: 0.4, // \resumeItemListEnd vspace(-5pt)
+  subheadingListGap: 0.7, // space between list items
+  nameHeader: 3.0, // \Huge name + contact line + vspace
+  skillCategory: 0.9, // one \textbf{Cat}{: ...} line
+  skillSectionOverhead: 1.2, // section heading + itemize overhead
   atsKeywords: 1.5, // hidden white text block (generous)
 };
 
