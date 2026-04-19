@@ -41,13 +41,23 @@ export async function PATCH(request, { params }) {
     const { id } = await params;
 
     const body = await request.json();
-    const { latex, title } = body;
+    const { latex, title, isPrimary, tags } = body;
+
+    // If marking as primary, unset isPrimary on all other resumes for this user
+    if (isPrimary === true) {
+      await Resume.updateMany(
+        { userId, _id: { $ne: id } },
+        { isPrimary: false },
+      );
+    }
 
     const updated = await Resume.findOneAndUpdate(
       { _id: id, userId },
       {
         ...(latex !== undefined && { latex }),
         ...(title !== undefined && { title }),
+        ...(isPrimary !== undefined && { isPrimary }),
+        ...(tags !== undefined && { tags }),
       },
       { new: true },
     );

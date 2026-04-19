@@ -1,5 +1,6 @@
 import { tailorCVForJob } from "@/lib/gemini";
 import { generateLatex } from "@/lib/latex";
+import { estimatePageUsage } from "@/lib/layoutEstimation";
 import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
@@ -23,7 +24,7 @@ export async function POST(request) {
       throw e;
     }
 
-    const { masterCV, jobDescription } = await request.json();
+    const { masterCV, jobDescription, position } = await request.json();
 
     if (!masterCV) {
       return NextResponse.json(
@@ -39,11 +40,12 @@ export async function POST(request) {
       );
     }
 
-    // Tailor the CV for the job
+    // Tailor the CV for the job (includes validation loops for page fit & heading width)
     const { data: tailoredCV, tokenUsage } = await tailorCVForJob(
       masterCV,
       jobDescription,
       apiKey,
+      position || "",
     );
 
     // Record token usage
@@ -72,11 +74,15 @@ export async function POST(request) {
     // Generate LaTeX from the tailored CV
     const latex = generateLatex(tailoredCV);
 
+    // Estimate page usage for the frontend
+    const pageEstimate = estimatePageUsage(tailoredCV);
+
     return NextResponse.json({
       message: "Resume tailored successfully",
       tailoredCV,
       latex,
       tokenUsage,
+      pageEstimate,
     });
   } catch (error) {
     console.error("Error tailoring resume:", error);

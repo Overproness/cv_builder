@@ -227,16 +227,35 @@ function generateProjects(projects) {
       projectName = `\\href{${demoUrl}}{${projectName}}`;
     }
 
-    // Format technologies for right alignment
+    // Format technologies
     const technologies =
       proj.technologies && proj.technologies.trim()
-        ? `\\small{\\emph{${escapeLatex(proj.technologies)}}}`
+        ? escapeLatex(proj.technologies)
         : "";
 
-    section += `      \\resumeProjectHeading
-          {\\textbf{${projectName}}}{${technologies}}
+    // Check if name + technologies fit on one heading line (~78 chars)
+    const nameLen = (proj.name || "").length;
+    const techLen = (proj.technologies || "").length;
+    const fitsOnOneLine = nameLen + techLen <= 78;
+
+    if (fitsOnOneLine || !technologies) {
+      // Single-line format: name left, technologies right
+      const techFormatted = technologies
+        ? `\\small{\\emph{${technologies}}}`
+        : "";
+      section += `      \\resumeProjectHeading
+          {\\textbf{${projectName}}}{${techFormatted}}
           \\resumeItemListStart
 `;
+    } else {
+      // Two-line format (like experience subheading): name on first line, tech on second
+      section += `      \\resumeProjectHeading
+          {\\textbf{${projectName}}}{}
+      \\vspace{-12pt}
+      \\resumeProjectHeading
+          {\\small{\\emph{${technologies}}}}{}\n          \\resumeItemListStart
+`;
+    }
 
     for (const point of proj.points || []) {
       section += `            \\resumeItem{${escapeLatex(point)}}
@@ -301,10 +320,16 @@ export function generateLatex(cvData) {
   latex += generateProjects(cvData.projects);
   latex += generateSkills(cvData.skills);
 
-  // Add hidden ATS keywords at the end (white text, invisible to humans)
-  if (cvData.ats_keywords && cvData.ats_keywords.length > 0) {
-    const keywordsText = cvData.ats_keywords.join(", ");
-    latex += `\n%---ATS KEYWORDS (INVISIBLE)---
+  // Add hidden ATS keywords ONLY for "bad" job descriptions (white text, invisible to humans)
+  // For normal JDs, keywords are already embedded in the skills section
+  if (
+    cvData.ats_keywords &&
+    cvData.ats_keywords.length > 0 &&
+    cvData.jd_quality === "bad"
+  ) {
+    // Limit white-text to prevent page overflow
+    const keywordsText = cvData.ats_keywords.slice(0, 15).join(", ");
+    latex += `\n%---ATS KEYWORDS (INVISIBLE - BAD JD)---
 {\\color{white}\\tiny ${escapeLatex(keywordsText)}}\n`;
   }
 

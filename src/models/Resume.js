@@ -41,6 +41,14 @@ const ResumeSchema = new mongoose.Schema(
       ref: "ApplicationGroup",
       default: null,
     },
+    isPrimary: {
+      type: Boolean,
+      default: false,
+    },
+    tags: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true },
 );

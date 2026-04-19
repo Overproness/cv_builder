@@ -52,7 +52,7 @@ const emptyCVTemplate = {
 };
 
 export default function CVPage() {
-  const [mode, setMode] = useState("raw"); // 'raw', 'structured', or 'add'
+  const [mode, setMode] = useState("raw"); // 'raw', 'structured', 'add', or 'ai-edit'
   const [rawText, setRawText] = useState("");
   const [addContent, setAddContent] = useState("");
   const [addType, setAddType] = useState("auto"); // 'auto', 'experience', 'project'
@@ -63,6 +63,7 @@ export default function CVPage() {
   const [cvId, setCvId] = useState(null);
   const [allCVs, setAllCVs] = useState([]);
   const [cvName, setCvName] = useState("");
+  const [aiEditPrompt, setAiEditPrompt] = useState("");
 
   // Load existing CV on mount
   useEffect(() => {
@@ -421,6 +422,38 @@ export default function CVPage() {
     }));
   };
 
+  const editWithAI = async () => {
+    if (!aiEditPrompt.trim()) {
+      showMessage("Please enter an edit instruction", "error");
+      return;
+    }
+    if (!cv.personal_info?.name) {
+      showMessage("Please create or load a CV first", "error");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/cv/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ existingCV: cv, editPrompt: aiEditPrompt }),
+      });
+      const data = await res.json();
+      if (res.ok && data.updatedCV) {
+        setCV(data.updatedCV);
+        setAiEditPrompt("");
+        setMode("structured");
+        showMessage("CV updated with AI!", "success");
+      } else {
+        showMessage(data.error || "Failed to edit CV", "error");
+      }
+    } catch {
+      showMessage("Failed to edit CV. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -457,6 +490,9 @@ export default function CVPage() {
 
             {mode === "structured" && (
               <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setMode("ai-edit")}>
+                  <LuSparkles className="mr-2 h-4 w-4" /> Edit with AI
+                </Button>
                 <Button variant="outline" onClick={() => setMode("add")}>
                   <LuPlus className="mr-2 h-4 w-4" /> Add to CV
                 </Button>
@@ -540,7 +576,54 @@ export default function CVPage() {
             </div>
           )}
 
-          {mode === "add" ? (
+          {mode === "ai-edit" ? (
+            /* AI Edit Mode */
+            <Card className="animate-[fade-in-up_0.5s_ease-out_forwards]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <LuSparkles className="h-5 w-5 text-primary" />
+                  Edit CV with AI
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <p className="text-muted-foreground">
+                  Describe what you want to change. The AI will update your CV
+                  accordingly.
+                </p>
+                <div className="space-y-2">
+                  <Label>Edit Instruction</Label>
+                  <textarea
+                    value={aiEditPrompt}
+                    onChange={(e) => setAiEditPrompt(e.target.value)}
+                    placeholder={`Examples:\n- "Rewrite my Freelance Developer bullet points to emphasize automation and Python"\n- "Add Docker and Kubernetes to my tools"\n- "Make all bullet points more concise"\n- "Change my job title from Web Dev Intern to Frontend Developer Intern"`}
+                    className="textarea-field resize-none text-sm leading-relaxed w-full"
+                    style={{ minHeight: "150px" }}
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={editWithAI}
+                    disabled={loading || !aiEditPrompt.trim()}
+                  >
+                    {loading ? (
+                      <>
+                        <LuLoader className="animate-spin mr-2 h-4 w-4" />
+                        Editing...
+                      </>
+                    ) : (
+                      <>
+                        <LuSparkles className="mr-2 h-4 w-4" />
+                        Apply Changes
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="outline" onClick={() => setMode("structured")}>
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : mode === "add" ? (
             /* Add to Existing CV Mode */
             <Card className="animate-[fade-in-up_0.5s_ease-out_forwards]">
               <CardHeader>

@@ -1,4 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  estimatePageUsage,
+  checkProjectHeadingFit,
+  countWords,
+  estimateRoomForMoreProjects,
+  assessJobDescriptionQuality,
+} from "./layoutEstimation.js";
 
 const MODEL_NAME = "gemini-2.5-flash-lite";
 
@@ -7,6 +14,9 @@ const PRICING = {
   inputPerMillion: 0.1,
   outputPerMillion: 0.4,
 };
+
+// Max validation retry attempts
+const MAX_RETRIES = 2;
 
 /**
  * Create a Gemini model instance from a user-provided API key
@@ -66,6 +76,34 @@ function extractTokenUsage(response) {
     totalTokens,
     cost: Math.round(cost * 1_000_000) / 1_000_000, // round to 6 decimals
   };
+}
+
+/**
+ * Merge multiple token usage objects into one aggregate.
+ */
+function mergeTokenUsage(...usages) {
+  const merged = { inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0 };
+  for (const u of usages) {
+    if (!u) continue;
+    merged.inputTokens += u.inputTokens || 0;
+    merged.outputTokens += u.outputTokens || 0;
+    merged.totalTokens += u.totalTokens || 0;
+    merged.cost += u.cost || 0;
+  }
+  merged.cost = Math.round(merged.cost * 1_000_000) / 1_000_000;
+  return merged;
+}
+
+/**
+ * Parse JSON from an AI response, stripping markdown fences.
+ */
+function parseAIJson(text) {
+  return JSON.parse(
+    text
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim(),
+  );
 }
 
 // Master CV JSON Schema for reference
@@ -257,6 +295,8 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
  * Generate a personalized, job-tailored cover letter body from a Master CV and Job Description.
  * Returns ONLY the body paragraphs — no header, no date, no sign-off.
  * The header/footer are assembled on the frontend.
+ *
+ * Uses a validation loop to enforce word count strictly.
  */
 export async function generateCoverLetter(
   masterCV,
@@ -267,9 +307,11 @@ export async function generateCoverLetter(
   apiKey,
 ) {
   const model = getModel(apiKey);
+  const allTokenUsages = [];
 
-  const targetMin = Math.max(80, wordCount - 30);
-  const targetMax = wordCount + 30;
+  // Strict bounds — tighter than before
+  const targetMin = Math.max(80, wordCount - 20);
+  const targetMax = wordCount + 15;
 
   const prompt = `You are an expert career coach and professional writer. Generate the BODY of a compelling, highly personalized cover letter for a job application.
 
@@ -284,17 +326,21 @@ ${jobDescription}
 
 COVER LETTER BODY REQUIREMENTS:
 1. Write ONLY the body paragraphs — do NOT include any header, date, greeting (Dear Hiring Manager), or sign-off (Sincerely)
-2. Target word count for the body: ${targetMin}–${targetMax} words (strict — count carefully before outputting)
-3. Structure: 3–4 focused paragraphs
+2. STRICT word count: Your output MUST be between ${targetMin} and ${targetMax} words. Count every word before outputting.
+   - Current target: exactly ${wordCount} words for the body
+   - If you write more than ${targetMax} words, you have FAILED the task
+   - If you write fewer than ${targetMin} words, you have FAILED the task
+3. Structure: 3 focused paragraphs (use 4 only if word count > 300)
    - Paragraph 1: Strong opening hook — why THIS specific company/role, mentioning the position title and company name naturally
    - Paragraph 2: 2–3 most relevant experiences tied to the job requirements with specifics
-   - Paragraph 3: 1–2 impressive specific projects or technical achievements that match the role
-   - Paragraph 4 (optional, keep short): Genuine enthusiasm + call to action
+   - Paragraph 3: 1–2 impressive specific projects or technical achievements that match the role + brief enthusiasm/call to action
 4. Use specific numbers, metrics, and keywords from both the CV and job description
 5. Do NOT use generic filler phrases like "I am writing to express my interest..."
 6. Be direct, confident, and specific — make it feel unique to this person and this job
 7. The letter should feel natural and human-written, not AI-generated
 8. Use strong action verbs and quantified achievements
+
+IMPORTANT: Before writing your final output, mentally count your words. Trim or expand to hit ${targetMin}–${targetMax} words exactly.
 
 OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. No markdown, no code blocks, no headers, no greeting, no sign-off.`;
 
@@ -310,22 +356,69 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
     });
 
     const response = await result.response;
-    const tokenUsage = extractTokenUsage(response);
+    allTokenUsages.push(extractTokenUsage(response));
     let text = response.text().trim();
 
-    // Remove any markdown code blocks if present
+    // Clean up
     text = text
       .replace(/```[a-z]*\n?/g, "")
       .replace(/```\n?/g, "")
       .trim();
 
-    // Strip any accidental "Dear Hiring Manager," or "Sincerely," lines if AI included them
+    // Strip accidental greeting/sign-off
     text = text
       .replace(/^Dear Hiring Manager[,.]?\s*/im, "")
       .replace(/^Sincerely[,.]?\s*[\s\S]*$/im, "")
       .trim();
 
-    return { data: text, tokenUsage };
+    // ── Word count validation loop ───────────────────────────────────────
+    let currentWordCount = countWords(text);
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      if (currentWordCount >= targetMin && currentWordCount <= targetMax) {
+        break; // Word count is within range
+      }
+
+      const direction =
+        currentWordCount > targetMax ? "too long" : "too short";
+      const diff =
+        currentWordCount > targetMax
+          ? currentWordCount - wordCount
+          : wordCount - currentWordCount;
+
+      const correctionPrompt = `The cover letter body you wrote is ${direction}. It has ${currentWordCount} words but must be between ${targetMin}–${targetMax} words (target: ${wordCount}).
+
+${
+  direction === "too long"
+    ? `Remove approximately ${diff} words. Cut filler phrases, reduce adjectives, tighten sentences. Do NOT remove entire paragraphs — just make each one more concise.`
+    : `Add approximately ${diff} words. Expand on specific achievements, add another metric, or elaborate on a relevant project.`
+}
+
+Current text:
+${text}
+
+OUTPUT: The revised body text only (${targetMin}–${targetMax} words). Plain text paragraphs separated by blank lines. No markdown, no headers, no greeting, no sign-off. Count your words carefully before outputting.`;
+
+      const fixResult = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: correctionPrompt }] }],
+        generationConfig: { temperature: 0.5, topP: 0.85 },
+      });
+
+      const fixResponse = await fixResult.response;
+      allTokenUsages.push(extractTokenUsage(fixResponse));
+      text = fixResponse
+        .text()
+        .trim()
+        .replace(/```[a-z]*\n?/g, "")
+        .replace(/```\n?/g, "")
+        .replace(/^Dear Hiring Manager[,.]?\s*/im, "")
+        .replace(/^Sincerely[,.]?\s*[\s\S]*$/im, "")
+        .trim();
+
+      currentWordCount = countWords(text);
+    }
+
+    return { data: text, tokenUsage: mergeTokenUsage(...allTokenUsages), wordCount: currentWordCount };
   } catch (error) {
     console.error("Error generating cover letter with Gemini:", error);
     rethrowIfApiKeyError(error);
@@ -340,10 +433,20 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
 
 /**
  * Tailor a Master CV for a specific job description using block-based selection
- * This ensures consistent and deterministic results across multiple runs
+ * with validation loops for page-fit and project heading width.
+ *
+ * Smart keyword strategy:
+ * - ALWAYS add important ATS keywords directly into the skills section
+ * - Only use white-text for "bad" job descriptions (unrealistic requirements)
+ * - Validate that combined content fits on one page
+ * - Validate that project name + technologies don't overflow heading lines
  */
-export async function tailorCVForJob(masterCV, jobDescription, apiKey) {
+export async function tailorCVForJob(masterCV, jobDescription, apiKey, position = "") {
   const model = getModel(apiKey);
+  const allTokenUsages = [];
+
+  // Assess JD quality to determine keyword strategy
+  const jdQuality = assessJobDescriptionQuality(jobDescription, position);
 
   // Count blocks in master CV for validation
   const totalBlocks =
@@ -351,23 +454,52 @@ export async function tailorCVForJob(masterCV, jobDescription, apiKey) {
     (masterCV.experience?.length || 0) +
     (masterCV.projects?.length || 0);
 
+  const { additionalProjects } = estimateRoomForMoreProjects({
+    ...masterCV,
+    experience: (masterCV.experience || []).slice(0, 3),
+    projects: (masterCV.projects || []).slice(0, 2),
+  });
+
+  // Determine project count based on available space
+  const targetProjects = Math.min(
+    masterCV.projects?.length || 0,
+    Math.max(2, 2 + additionalProjects),
+  );
+
+  const whiteTextInstructions =
+    jdQuality === "bad"
+      ? `This job description appears to be poorly written (unrealistic requirements for the role level).
+   Include an "ats_keywords" array with key terms from the JD that are missing from the resume.
+   Keep the ats_keywords array SHORT — maximum 15 comma-separated keywords.`
+      : `This job description is reasonable. Do NOT use hidden/white-text keywords.
+   Instead, ensure ALL important ATS keywords from the job description are incorporated into:
+   - The skills section (add relevant skills/tools even if not in original CV, as long as plausible)
+   - Bullet points (naturally weave in job description terminology)
+   Set "ats_keywords" to an EMPTY array [].`;
+
   const prompt = `You are an expert resume consultant. Analyze the provided Master CV JSON against the Job Description and create a tailored resume that maximizes relevance.
 
 CRITICAL 1-PAGE RESUME REQUIREMENT:
 - Aim for MAXIMUM 400 words total (strict 1-page letter paper at 11pt)
 - Be EXTREMELY selective — choose only the most impactful content
 - Limit to 2-3 experience entries with MAXIMUM 2 bullet points each
-- Limit to 2-3 project entries with MAXIMUM 2 bullet points each
+- Include ${targetProjects} project entries with MAXIMUM 2 bullet points each
 - Include ALL education entries (usually 1-2)
 - Fewer, stronger bullet points are always better than more, weaker ones
-- If content exceeds 400 words, cut the least relevant bullets first
 
-ATS KEYWORD OPTIMIZATION:
-1. Extract key technical skills, tools, frameworks, and buzzwords from the job description
-2. Incorporate these keywords naturally into bullet points where applicable
-3. Add relevant keywords to the skills section even if not in original CV (if the candidate could reasonably have that skill based on their experience)
-4. Maintain authenticity - don't add false claims, but optimize language to match job requirements
-5. IMPORTANT: Create an "ats_keywords" array containing keywords from the job description that are NOT present anywhere in the tailored resume (not in bullet points, not in skills, not anywhere). These will be added invisibly to the resume for ATS scanning.
+PROJECT HEADING LINE-WIDTH CONSTRAINT:
+- Each project has a "name" and "technologies" field displayed on the SAME LINE
+- The combined character count of name + technologies MUST NOT exceed 78 characters
+- If the project name is long, use FEWER technologies (pick only the 3-4 most relevant)
+- If technologies are many, abbreviate the project name
+- Example: "AbuBeast - Web3 Trading Platform" (33 chars) + "Next.js, React, Ethers.js" (25 chars) = 58 chars ✓
+- Example BAD: "AbuBeast - Comprehensive Web3 Trading Platform" (47 chars) + "Next.js 15, React, Shadcn UI, TradingView, Ethers.js, Solana Web3.js" (68 chars) = 115 chars ✗ OVERFLOW!
+
+ATS KEYWORD STRATEGY:
+${whiteTextInstructions}
+- Extract ALL key technical skills, tools, frameworks from the job description
+- Add these keywords to the appropriate skills subcategory (languages, frameworks, tools, libraries)
+- Incorporate keywords naturally into bullet points where applicable
 
 BLOCK-BASED SELECTION APPROACH:
 - The Master CV contains ${totalBlocks} total blocks:
@@ -384,15 +516,13 @@ CRITICAL REQUIREMENTS:
    b. Prioritize blocks with highest relevance scores
    c. Include ALL education blocks (always relevant)
    d. Include 2-3 experience blocks (select highest scoring)
-   e. Include 2-3 project blocks (select highest scoring)
+   e. Include ${targetProjects} project blocks (select highest scoring)
 3. For selected blocks, tailor bullet points to emphasize job-relevant keywords
 4. LIMIT each experience/project to 2-3 most impactful bullet points only
 5. Keep personal_info identical to Master CV
 6. Preserve demo_link field for projects if present in Master CV
-7. Tailor skills section to highlight job-relevant skills, adding keywords from job description
-8. Use exact same JSON structure as Master CV PLUS add "ats_keywords" array
-9. Ensure professional language and quantified achievements
-10. The "ats_keywords" array should contain ONLY keywords/phrases from the job description that are MISSING from the final resume
+7. Use exact same JSON structure as Master CV PLUS add "ats_keywords" array and "jd_quality" field
+8. Ensure professional language and quantified achievements
 
 SELECTION CONSISTENCY RULES:
 - Always select the SAME blocks when given identical input
@@ -400,14 +530,15 @@ SELECTION CONSISTENCY RULES:
 - If two blocks have equal scores, prefer the more recent one
 - Never randomly select - use deterministic scoring
 
-OUTPUT JSON STRUCTURE (including new ats_keywords field):
+OUTPUT JSON STRUCTURE:
 {
   "personal_info": { ... },
   "education": [ ... ],
   "experience": [ ... ],
   "projects": [ ... ],
   "skills": { ... },
-  "ats_keywords": ["keyword1", "keyword2", ...] // Keywords from job description NOT in resume
+  "ats_keywords": [...],
+  "jd_quality": "${jdQuality}"
 }
 
 MASTER CV JSON:
@@ -416,12 +547,11 @@ ${JSON.stringify(masterCV, null, 2)}
 JOB DESCRIPTION:
 ${jobDescription}
 
-OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links preserved):`;
+OUTPUT (tailored 1-page resume as valid JSON):`;
 
   try {
-    // Use generation config for more deterministic output
     const generationConfig = {
-      temperature: 0.3, // Lower temperature for more consistent results
+      temperature: 0.3,
       topP: 0.8,
       topK: 20,
     };
@@ -432,16 +562,9 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
     });
 
     const response = await result.response;
-    const tokenUsage = extractTokenUsage(response);
+    allTokenUsages.push(extractTokenUsage(response));
     let text = response.text();
-
-    // Clean up the response
-    text = text
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-
-    const parsed = JSON.parse(text);
+    let parsed = parseAIJson(text);
 
     // Validate structure
     if (!parsed.education) parsed.education = [];
@@ -456,8 +579,79 @@ OUTPUT (tailored 1-page resume as valid JSON with ATS keywords and demo links pr
       };
     if (!parsed.personal_info) parsed.personal_info = masterCV.personal_info;
     if (!parsed.ats_keywords) parsed.ats_keywords = [];
+    parsed.jd_quality = jdQuality;
 
-    return { data: parsed, tokenUsage };
+    // ── Validation Loop ──────────────────────────────────────────────────
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const issues = [];
+
+      // 1. Check page fit
+      const pageEstimate = estimatePageUsage(parsed);
+      if (!pageEstimate.fits) {
+        issues.push(
+          `Resume exceeds 1 page (${pageEstimate.usagePercent}% full, ${pageEstimate.overflow} lines over). ` +
+            `Reduce content: remove the least relevant bullet point from each experience/project, ` +
+            `or remove the least relevant project entirely.`,
+        );
+      }
+
+      // 2. Check project heading widths
+      for (const proj of parsed.projects) {
+        const headingCheck = checkProjectHeadingFit(
+          proj.name,
+          proj.technologies,
+        );
+        if (!headingCheck.fits) {
+          issues.push(
+            `Project "${proj.name}" heading overflows by ${headingCheck.overflow} chars ` +
+              `(name: ${headingCheck.nameLen} + tech: ${headingCheck.techLen} = ${headingCheck.totalLen}, max ${headingCheck.budget}). ` +
+              `Shorten the project name and/or reduce technologies to the 3-4 most relevant ones.`,
+          );
+        }
+      }
+
+      // 3. If JD is not bad, ensure ats_keywords is empty
+      if (jdQuality !== "bad" && parsed.ats_keywords?.length > 0) {
+        issues.push(
+          `This is a reasonable job description — do not use white-text keywords. ` +
+            `Move ALL ats_keywords into the skills section instead, then set ats_keywords to [].`,
+        );
+      }
+
+      if (issues.length === 0) break; // All good!
+
+      // Re-prompt with correction
+      const correctionPrompt = `The tailored resume JSON you generated has these issues that must be fixed:
+
+${issues.map((issue, i) => `${i + 1}. ${issue}`).join("\n")}
+
+Here is the current JSON:
+${JSON.stringify(parsed, null, 2)}
+
+Fix ALL issues above and return the corrected JSON. Output ONLY valid JSON, no explanations.
+Remember: combined project name + technologies must be ≤ 78 characters each.
+${jdQuality !== "bad" ? "ats_keywords MUST be an empty array []." : "ats_keywords must have at most 15 short keywords."}`;
+
+      const fixResult = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: correctionPrompt }] }],
+        generationConfig,
+      });
+
+      const fixResponse = await fixResult.response;
+      allTokenUsages.push(extractTokenUsage(fixResponse));
+      const fixText = fixResponse.text();
+      const fixParsed = parseAIJson(fixText);
+
+      // Merge the fix back
+      parsed = {
+        ...fixParsed,
+        personal_info: fixParsed.personal_info || parsed.personal_info,
+        jd_quality: jdQuality,
+      };
+      if (!parsed.ats_keywords) parsed.ats_keywords = [];
+    }
+
+    return { data: parsed, tokenUsage: mergeTokenUsage(...allTokenUsages) };
   } catch (error) {
     console.error("Error tailoring CV with Gemini:", error);
     rethrowIfApiKeyError(error);
@@ -548,5 +742,130 @@ Example: [{"question": "Why do you want to work here?", "answer": "..."}]`;
       );
     }
     throw new Error("Failed to answer questions. Please try again.");
+  }
+}
+
+/**
+ * Quick-tailor an existing resume by ONLY editing the skills section and
+ * ATS keywords for a new job description. The structure, experience, and
+ * projects remain unchanged. Used for "primary" resumes that the user
+ * wants to quickly adapt to a new application.
+ */
+export async function quickTailorKeywords(
+  existingTailoredCV,
+  jobDescription,
+  apiKey,
+  position = "",
+) {
+  const model = getModel(apiKey);
+  const allTokenUsages = [];
+
+  const jdQuality = assessJobDescriptionQuality(jobDescription, position);
+
+  const whiteTextRule =
+    jdQuality === "bad"
+      ? `This JD has unrealistic requirements. Include up to 15 ats_keywords for white-text ATS.`
+      : `This JD is reasonable. Set ats_keywords to []. Put ALL keywords in the skills section.`;
+
+  const prompt = `You are an expert ATS optimization consultant. The user has a primary resume they are happy with.
+Your ONLY job is to update the SKILLS section and ats_keywords for a new job application.
+
+RULES:
+1. Do NOT change personal_info, education, experience, or projects in ANY way
+2. ONLY modify the "skills" object and "ats_keywords" array
+3. Extract important technical keywords from the job description
+4. Add relevant keywords to the appropriate skills subcategory (languages, frameworks, tools, libraries)
+5. Keep existing skills that are relevant; you may remove ones that aren't in the JD to make room
+6. ${whiteTextRule}
+7. Output the COMPLETE CV JSON with only skills and ats_keywords changed
+
+EXISTING TAILORED CV:
+${JSON.stringify(existingTailoredCV, null, 2)}
+
+NEW JOB DESCRIPTION:
+${jobDescription}
+
+OUTPUT (valid JSON only with ONLY skills and ats_keywords modified):`;
+
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, topP: 0.8 },
+    });
+
+    const response = await result.response;
+    allTokenUsages.push(extractTokenUsage(response));
+    const parsed = parseAIJson(response.text());
+
+    // Enforce that only skills and ats_keywords changed
+    const final = {
+      ...existingTailoredCV,
+      skills: parsed.skills || existingTailoredCV.skills,
+      ats_keywords: parsed.ats_keywords || [],
+      jd_quality: jdQuality,
+    };
+
+    return { data: final, tokenUsage: mergeTokenUsage(...allTokenUsages) };
+  } catch (error) {
+    console.error("Error quick-tailoring keywords:", error);
+    rethrowIfApiKeyError(error);
+    throw new Error("Failed to quick-tailor keywords. Please try again.");
+  }
+}
+
+/**
+ * Edit a Master CV using a natural language prompt from the user.
+ * The AI modifies the specified sections based on the user's instructions.
+ */
+export async function editCVWithAI(existingCV, editPrompt, apiKey) {
+  const model = getModel(apiKey);
+
+  const prompt = `You are an expert resume editor. The user wants to modify their Master CV based on the following instruction.
+
+INSTRUCTION FROM USER:
+${editPrompt}
+
+CURRENT CV JSON:
+${JSON.stringify(existingCV, null, 2)}
+
+RULES:
+1. Output ONLY valid JSON, no markdown code blocks or explanations
+2. Apply the user's requested changes accurately
+3. Maintain the exact same JSON structure
+4. Do NOT remove content unless the user explicitly asks to remove something
+5. Preserve all existing entries unless the user says to change them
+6. Maintain professional language and formatting standards
+7. Keep the CV comprehensive — this is a Master CV, not a tailored resume
+
+OUTPUT (updated CV as valid JSON):`;
+
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.4, topP: 0.9 },
+    });
+
+    const response = await result.response;
+    const tokenUsage = extractTokenUsage(response);
+    const parsed = parseAIJson(response.text());
+
+    // Validate structure
+    if (!parsed.education) parsed.education = existingCV.education || [];
+    if (!parsed.experience) parsed.experience = existingCV.experience || [];
+    if (!parsed.projects) parsed.projects = existingCV.projects || [];
+    if (!parsed.skills)
+      parsed.skills = existingCV.skills || {
+        languages: [],
+        frameworks: [],
+        tools: [],
+        libraries: [],
+      };
+    if (!parsed.personal_info) parsed.personal_info = existingCV.personal_info;
+
+    return { data: parsed, tokenUsage };
+  } catch (error) {
+    console.error("Error editing CV with AI:", error);
+    rethrowIfApiKeyError(error);
+    throw new Error("Failed to edit CV. Please try again.");
   }
 }

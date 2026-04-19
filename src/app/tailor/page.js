@@ -99,6 +99,8 @@ export default function TailorPage() {
 
   // Token usage per generation
   const [tokenUsage, setTokenUsage] = useState(null);
+  // Page estimation from backend
+  const [pageEstimate, setPageEstimate] = useState(null);
   // Whether user has API key
   const [hasApiKey, setHasApiKey] = useState(true); // assume true, check on load
 
@@ -212,6 +214,7 @@ export default function TailorPage() {
     setCoverLetterContent("");
     setQuestionAnswers([]);
     setTokenUsage(null);
+    setPageEstimate(null);
 
     try {
       const requestFns = [];
@@ -221,7 +224,7 @@ export default function TailorPage() {
           fetch("/api/resume/tailor", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ masterCV, jobDescription }),
+            body: JSON.stringify({ masterCV, jobDescription, position }),
           }).then((r) =>
             r.json().then((d) => ({
               type: "resume",
@@ -324,6 +327,7 @@ export default function TailorPage() {
           if (result.ok && result.data.latex) {
             setTailoredLatex(result.data.latex);
             setTailoredCV(result.data.tailoredCV);
+            if (result.data.pageEstimate) setPageEstimate(result.data.pageEstimate);
             success = true;
             if (genResume && !genCoverLetter) setActiveTab("resume");
             if (result.data.tokenUsage) {
@@ -1181,6 +1185,32 @@ export default function TailorPage() {
                               {savedResumeId ? "Saved" : "Save"}
                             </Button>
                           </div>
+
+                          {/* Page estimate indicator */}
+                          {pageEstimate && (
+                            <div
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                pageEstimate.fits
+                                  ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                                  : "bg-red-500/10 text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${pageEstimate.fits ? "bg-green-500" : "bg-red-500"}`}
+                                  style={{
+                                    width: `${Math.min(100, pageEstimate.usagePercent)}%`,
+                                  }}
+                                />
+                              </div>
+                              <span>
+                                ~{pageEstimate.usagePercent}% page used
+                                ({pageEstimate.totalLines}/{pageEstimate.maxLines} lines)
+                                {!pageEstimate.fits &&
+                                  ` — ${pageEstimate.overflow} lines over`}
+                              </span>
+                            </div>
+                          )}
 
                           {/* Monaco Editor */}
                           <div

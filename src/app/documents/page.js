@@ -63,6 +63,16 @@ export default function DocumentsPage() {
   const [groupDetail, setGroupDetail] = useState(null);
   const [loadingGroup, setLoadingGroup] = useState(false);
 
+  // Quick tailor modal for primary resumes
+  const [quickTailorResume, setQuickTailorResume] = useState(null);
+  const [quickTailorJD, setQuickTailorJD] = useState("");
+  const [quickTailorPosition, setQuickTailorPosition] = useState("");
+  const [quickTailorLoading, setQuickTailorLoading] = useState(false);
+
+  // Rename modal
+  const [renamingResume, setRenamingResume] = useState(null);
+  const [renameTitle, setRenameTitle] = useState("");
+
   const { compileLatexOnServer, isLoading: engineLoading } = useLatexCompiler();
 
   // Debounce search
@@ -262,6 +272,103 @@ export default function DocumentsPage() {
       day: "numeric",
     });
 
+  const togglePrimary = async (resume) => {
+    const newValue = !resume.isPrimary;
+    try {
+      const res = await fetch(`/api/resume/${resume._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPrimary: newValue }),
+      });
+      if (res.ok) {
+        setResumes((prev) =>
+          prev.map((r) => ({
+            ...r,
+            isPrimary: r._id === resume._id ? newValue : newValue ? false : r.isPrimary,
+          })),
+        );
+        showMessage(
+          newValue ? `"${resume.title}" marked as primary` : "Primary removed",
+          "success",
+        );
+      }
+    } catch {
+      showMessage("Failed to update", "error");
+    }
+  };
+
+  const renameResume = async () => {
+    if (!renamingResume || !renameTitle.trim()) return;
+    try {
+      const res = await fetch(`/api/resume/${renamingResume._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: renameTitle.trim() }),
+      });
+      if (res.ok) {
+        setResumes((prev) =>
+          prev.map((r) =>
+            r._id === renamingResume._id ? { ...r, title: renameTitle.trim() } : r,
+          ),
+        );
+        showMessage("Resume renamed", "success");
+        setRenamingResume(null);
+      }
+    } catch {
+      showMessage("Failed to rename", "error");
+    }
+  };
+
+  const handleQuickTailor = async () => {
+    if (!quickTailorResume?.tailoredCV || !quickTailorJD.trim()) return;
+    setQuickTailorLoading(true);
+    try {
+      const res = await fetch("/api/resume/quick-tailor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tailoredCV: quickTailorResume.tailoredCV,
+          jobDescription: quickTailorJD,
+          position: quickTailorPosition,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.latex) {
+        // Save as a new resume
+        const saveRes = await fetch("/api/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: quickTailorPosition
+              ? `${quickTailorPosition} (from ${quickTailorResume.title})`
+              : `Quick Tailor - ${quickTailorResume.title}`,
+            company: "",
+            position: quickTailorPosition,
+            jobDescription: quickTailorJD,
+            latex: data.latex,
+            tailoredCV: data.tailoredCV,
+            masterCVId: quickTailorResume.masterCVId || null,
+          }),
+        });
+        if (saveRes.ok) {
+          showMessage("Quick-tailored resume saved!", "success");
+          setQuickTailorResume(null);
+          setQuickTailorJD("");
+          setQuickTailorPosition("");
+          fetchAll();
+        } else {
+          showMessage("Failed to save quick-tailored resume", "error");
+        }
+      } else {
+        showMessage(data.error || "Quick tailor failed", "error");
+      }
+    } catch {
+      showMessage("Quick tailor failed", "error");
+    } finally {
+      setQuickTailorLoading(false);
+    }
+  };
+
   // Filter resumes and cover letters by search query (client-side)
   const filterBySearch = useCallback(
     (items) => {
@@ -311,6 +418,92 @@ export default function DocumentsPage() {
                 fileName={`${viewingResume?.title || "resume"}.pdf`}
                 onClose={() => setShowPdfPreview(false)}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Quick Tailor Modal */}
+        {quickTailorResume && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-card rounded-xl shadow-xl w-full max-w-lg p-6">
+              <h2 className="text-lg font-semibold mb-1">Quick Tailor Keywords</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Using &ldquo;{quickTailorResume.title}&rdquo; as base — only skills
+                &amp; keywords will be updated.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Position (optional)</label>
+                  <Input
+                    placeholder="e.g. Data Scientist"
+                    value={quickTailorPosition}
+                    onChange={(e) => setQuickTailorPosition(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Job Description *</label>
+                  <textarea
+                    value={quickTailorJD}
+                    onChange={(e) => setQuickTailorJD(e.target.value)}
+                    placeholder="Paste the new job description here..."
+                    className="w-full h-48 rounded-lg border border-border bg-background p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-4">
+                <Button
+                  onClick={handleQuickTailor}
+                  disabled={quickTailorLoading || !quickTailorJD.trim()}
+                  className="flex-1"
+                >
+                  {quickTailorLoading ? (
+                    <>
+                      <LuLoader className="animate-spin mr-2 h-4 w-4" />
+                      Tailoring...
+                    </>
+                  ) : (
+                    <>
+                      <LuSparkles className="mr-2 h-4 w-4" />
+                      Quick Tailor
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setQuickTailorResume(null);
+                    setQuickTailorJD("");
+                    setQuickTailorPosition("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rename Modal */}
+        {renamingResume && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-card rounded-xl shadow-xl w-full max-w-sm p-6">
+              <h2 className="text-lg font-semibold mb-4">Rename Resume</h2>
+              <Input
+                value={renameTitle}
+                onChange={(e) => setRenameTitle(e.target.value)}
+                placeholder="New title..."
+                className="mb-4"
+                onKeyDown={(e) => e.key === "Enter" && renameResume()}
+              />
+              <div className="flex gap-3">
+                <Button onClick={renameResume} className="flex-1">
+                  Save
+                </Button>
+                <Button variant="outline" onClick={() => setRenamingResume(null)}>
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -817,20 +1010,110 @@ export default function DocumentsPage() {
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredResumes.map((resume) => (
-                  <DocumentCard
+                  <Card
                     key={resume._id}
-                    icon={<LuFileText className="h-5 w-5 text-primary" />}
-                    title={resume.title}
-                    company={resume.company}
-                    position={resume.position}
-                    date={resume.createdAt}
-                    formatDate={formatDate}
-                    onView={() => openResume(resume)}
-                    onDownload={() => downloadTeX(resume)}
-                    onDelete={() => deleteResume(resume._id)}
-                    viewLabel="View LaTeX"
-                    downloadLabel=".tex"
-                  />
+                    className={`group hover:shadow-md transition-shadow ${resume.isPrimary ? "border-primary/50 ring-1 ring-primary/20" : ""}`}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <LuFileText className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <CardTitle className="text-sm font-semibold truncate">
+                              {resume.title}
+                            </CardTitle>
+                            {resume.isPrimary && (
+                              <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              setRenamingResume(resume);
+                              setRenameTitle(resume.title);
+                            }}
+                            title="Rename"
+                          >
+                            <LuFilePen className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                            onClick={() => deleteResume(resume._id)}
+                            title="Delete"
+                          >
+                            <LuTrash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      {(resume.company || resume.position) && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                          <LuBuilding2 className="h-3 w-3" />
+                          <span className="truncate">
+                            {resume.position && resume.company
+                              ? `${resume.position} @ ${resume.company}`
+                              : resume.company || resume.position}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+                        <LuCalendar className="h-3 w-3" />
+                        <span>{formatDate(resume.createdAt)}</span>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => openResume(resume)}
+                        >
+                          <LuEye className="h-4 w-4 mr-1" />
+                          View LaTeX
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadTeX(resume)}
+                        >
+                          <LuDownload className="h-4 w-4 mr-1" />
+                          .tex
+                        </Button>
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          variant={resume.isPrimary ? "default" : "outline"}
+                          size="sm"
+                          className="flex-1 text-xs"
+                          onClick={() => togglePrimary(resume)}
+                        >
+                          <LuSparkles className="h-3.5 w-3.5 mr-1" />
+                          {resume.isPrimary ? "Primary ✓" : "Set Primary"}
+                        </Button>
+                        {resume.isPrimary && resume.tailoredCV && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-xs"
+                            onClick={() => setQuickTailorResume(resume)}
+                          >
+                            <LuArrowRight className="h-3.5 w-3.5 mr-1" />
+                            Quick Tailor
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )
