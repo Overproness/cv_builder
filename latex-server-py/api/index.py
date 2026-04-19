@@ -2,8 +2,10 @@ import os
 import uuid
 import shutil
 import subprocess
+import tarfile
 import tempfile
 import logging
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -51,23 +53,41 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+TECTONIC_URL = (
+    "https://github.com/tectonic-typesetting/tectonic/releases/latest/download/"
+    "tectonic-x86_64-unknown-linux-musl.tar.gz"
+)
+
+
+def _download_tectonic() -> str:
+    """Download the tectonic static binary to /tmp on cold start."""
+    dest = Path(tempfile.gettempdir()) / "tectonic"
+    if dest.is_file() and os.access(str(dest), os.X_OK):
+        return str(dest)
+    logger.info("Downloading tectonic binary from GitHub...")
+    tar_path = Path(tempfile.gettempdir()) / "tectonic.tar.gz"
+    urllib.request.urlretrieve(TECTONIC_URL, str(tar_path))
+    with tarfile.open(str(tar_path)) as tf:
+        tf.extractall(path=str(tar_path.parent))
+    dest.chmod(0o755)
+    tar_path.unlink(missing_ok=True)
+    logger.info("tectonic ready at %s", dest)
+    return str(dest)
+
+
 def get_tectonic_path() -> str:
     """
     Resolve tectonic binary path.
-    On Vercel the binary is bundled into bin/ relative to the project root.
-    Locally it falls back to whatever is on PATH.
+    Checks: bundled bin/ (local dev) -> system PATH -> /tmp download (Vercel Lambda).
     """
-    # api/index.py -> project root is one level up
     project_root = Path(__file__).resolve().parent.parent
     bundled = project_root / "bin" / "tectonic"
-    if bundled.is_file() and os.access(bundled, os.X_OK):
+    if bundled.is_file() and os.access(str(bundled), os.X_OK):
         return str(bundled)
     system = shutil.which("tectonic")
     if system:
         return system
-    raise RuntimeError(
-        "tectonic not found. Install it locally or run via Vercel (build.sh bundles it)."
-    )
+    return _download_tectonic()
 
 
 def check_tectonic() -> bool:
