@@ -152,6 +152,16 @@ async def compile_latex(
     if not body.latex:
         raise HTTPException(status_code=400, detail="LaTeX content is required")
 
+    # Strip pdfTeX-only primitives that are undefined in tectonic (XeTeX).
+    # Resume templates often include \input{glyphtounicode} and
+    # \pdfgentounicode=1 for pdflatex — they are a no-op for our purposes.
+    import re as _re
+    latex_source = body.latex
+    latex_source = _re.sub(r"\\input\{glyphtounicode\}", "", latex_source)
+    latex_source = _re.sub(r"\\pdfgentounicode\s*=\s*\d+", "", latex_source)
+    # Also catch any bare \pdfglyphtounicode calls that may appear in the source
+    latex_source = _re.sub(r"\\pdfglyphtounicode\b[^\n]*", "", latex_source)
+
     tectonic = get_tectonic_path()
     job_id = str(uuid.uuid4())
     work_dir = Path(tempfile.gettempdir()) / f"latex-{job_id}"
@@ -163,7 +173,7 @@ async def compile_latex(
 
     try:
         work_dir.mkdir(parents=True, exist_ok=True)
-        tex_file.write_text(body.latex, encoding="utf-8")
+        tex_file.write_text(latex_source, encoding="utf-8")
 
         # Create a minimal fontconfig file so XeTeX doesn't fail with
         # "Cannot load default config file: No such file: (null)" in
