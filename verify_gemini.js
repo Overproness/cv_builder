@@ -35,15 +35,17 @@ const genAI = new GoogleGenerativeAI(apiKey);
   }
 
   try {
-    console.log("Trying gemini-3.1-flash-lite...");
-    const model3 = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+    console.log("Trying gemini-3.1-flash-lite-preview...");
+    const model3 = genAI.getGenerativeModel({
+      model: "gemini-3.1-flash-lite-preview",
+    });
     const result3 = await model3.generateContent("Hello");
     console.log(
-      "Response from gemini-3.1-flash-lite:",
+      "Response from gemini-3.1-flash-lite-preview:",
       result3.response.text(),
     );
   } catch (e3) {
-    console.error("Error with gemini-3.1-flash-lite:", e3.message);
+    console.error("Error with gemini-3.1-flash-lite-preview:", e3.message);
   }
 
   try {
