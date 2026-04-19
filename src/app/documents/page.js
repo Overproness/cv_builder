@@ -284,7 +284,8 @@ export default function DocumentsPage() {
         setResumes((prev) =>
           prev.map((r) => ({
             ...r,
-            isPrimary: r._id === resume._id ? newValue : newValue ? false : r.isPrimary,
+            isPrimary:
+              r._id === resume._id ? newValue : newValue ? false : r.isPrimary,
           })),
         );
         showMessage(
@@ -308,7 +309,9 @@ export default function DocumentsPage() {
       if (res.ok) {
         setResumes((prev) =>
           prev.map((r) =>
-            r._id === renamingResume._id ? { ...r, title: renameTitle.trim() } : r,
+            r._id === renamingResume._id
+              ? { ...r, title: renameTitle.trim() }
+              : r,
           ),
         );
         showMessage("Resume renamed", "success");
@@ -426,14 +429,18 @@ export default function DocumentsPage() {
         {quickTailorResume && (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
             <div className="bg-card rounded-xl shadow-xl w-full max-w-lg p-6">
-              <h2 className="text-lg font-semibold mb-1">Quick Tailor Keywords</h2>
+              <h2 className="text-lg font-semibold mb-1">
+                Quick Tailor Keywords
+              </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Using &ldquo;{quickTailorResume.title}&rdquo; as base — only skills
-                &amp; keywords will be updated.
+                Using &ldquo;{quickTailorResume.title}&rdquo; as base — only
+                skills &amp; keywords will be updated.
               </p>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium mb-1 block">Position (optional)</label>
+                  <label className="text-xs font-medium mb-1 block">
+                    Position (optional)
+                  </label>
                   <Input
                     placeholder="e.g. Data Scientist"
                     value={quickTailorPosition}
@@ -442,7 +449,9 @@ export default function DocumentsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium mb-1 block">Job Description *</label>
+                  <label className="text-xs font-medium mb-1 block">
+                    Job Description *
+                  </label>
                   <textarea
                     value={quickTailorJD}
                     onChange={(e) => setQuickTailorJD(e.target.value)}
@@ -500,7 +509,10 @@ export default function DocumentsPage() {
                 <Button onClick={renameResume} className="flex-1">
                   Save
                 </Button>
-                <Button variant="outline" onClick={() => setRenamingResume(null)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setRenamingResume(null)}
+                >
                   Cancel
                 </Button>
               </div>

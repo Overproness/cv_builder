@@ -327,7 +327,8 @@ export default function TailorPage() {
           if (result.ok && result.data.latex) {
             setTailoredLatex(result.data.latex);
             setTailoredCV(result.data.tailoredCV);
-            if (result.data.pageEstimate) setPageEstimate(result.data.pageEstimate);
+            if (result.data.pageEstimate)
+              setPageEstimate(result.data.pageEstimate);
             success = true;
             if (genResume && !genCoverLetter) setActiveTab("resume");
             if (result.data.tokenUsage) {
@@ -1204,8 +1205,9 @@ export default function TailorPage() {
                                 />
                               </div>
                               <span>
-                                ~{pageEstimate.usagePercent}% page used
-                                ({pageEstimate.totalLines}/{pageEstimate.maxLines} lines)
+                                ~{pageEstimate.usagePercent}% page used (
+                                {pageEstimate.totalLines}/
+                                {pageEstimate.maxLines} lines)
                                 {!pageEstimate.fits &&
                                   ` — ${pageEstimate.overflow} lines over`}
                               </span>

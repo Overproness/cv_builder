@@ -1,10 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
-  estimatePageUsage,
+  assessJobDescriptionQuality,
   checkProjectHeadingFit,
   countWords,
+  estimatePageUsage,
   estimateRoomForMoreProjects,
-  assessJobDescriptionQuality,
 } from "./layoutEstimation.js";
 
 const MODEL_NAME = "gemini-2.5-flash-lite";
@@ -379,8 +379,7 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
         break; // Word count is within range
       }
 
-      const direction =
-        currentWordCount > targetMax ? "too long" : "too short";
+      const direction = currentWordCount > targetMax ? "too long" : "too short";
       const diff =
         currentWordCount > targetMax
           ? currentWordCount - wordCount
@@ -418,7 +417,11 @@ OUTPUT: The revised body text only (${targetMin}–${targetMax} words). Plain te
       currentWordCount = countWords(text);
     }
 
-    return { data: text, tokenUsage: mergeTokenUsage(...allTokenUsages), wordCount: currentWordCount };
+    return {
+      data: text,
+      tokenUsage: mergeTokenUsage(...allTokenUsages),
+      wordCount: currentWordCount,
+    };
   } catch (error) {
     console.error("Error generating cover letter with Gemini:", error);
     rethrowIfApiKeyError(error);
@@ -441,7 +444,12 @@ OUTPUT: The revised body text only (${targetMin}–${targetMax} words). Plain te
  * - Validate that combined content fits on one page
  * - Validate that project name + technologies don't overflow heading lines
  */
-export async function tailorCVForJob(masterCV, jobDescription, apiKey, position = "") {
+export async function tailorCVForJob(
+  masterCV,
+  jobDescription,
+  apiKey,
+  position = "",
+) {
   const model = getModel(apiKey);
   const allTokenUsages = [];
 

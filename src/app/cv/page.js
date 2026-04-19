@@ -617,7 +617,10 @@ export default function CVPage() {
                       </>
                     )}
                   </Button>
-                  <Button variant="outline" onClick={() => setMode("structured")}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setMode("structured")}
+                  >
                     Cancel
                   </Button>
                 </div>

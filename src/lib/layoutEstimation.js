@@ -112,9 +112,9 @@ export function estimatePageUsage(cvData) {
   // Skills
   if (cvData.skills) {
     const { languages, frameworks, tools, libraries } = cvData.skills;
-    const cats =
-      [languages, frameworks, tools, libraries].filter((a) => a?.length > 0)
-        .length;
+    const cats = [languages, frameworks, tools, libraries].filter(
+      (a) => a?.length > 0,
+    ).length;
     if (cats > 0) {
       const skillLines = COST.skillSectionOverhead + cats * COST.skillCategory;
       total += skillLines;
@@ -216,9 +216,7 @@ export function estimateCoverLetterPageUsage(fullContent) {
   const CL_CHARS_PER_LINE = 80;
   let bodyLineCount = 0;
   const bodyLines =
-    bodyStartIdx >= 0
-      ? lines.slice(bodyStartIdx + 1, bodyEndIdx)
-      : lines;
+    bodyStartIdx >= 0 ? lines.slice(bodyStartIdx + 1, bodyEndIdx) : lines;
 
   for (const line of bodyLines) {
     const trimmed = line.trim();
@@ -248,7 +246,8 @@ export function estimateCoverLetterPageUsage(fullContent) {
 export function estimateRoomForMoreProjects(cvData) {
   const { totalLines, maxLines } = estimatePageUsage(cvData);
   const remaining = maxLines - totalLines;
-  const linesPerProject = COST.projectHeading + 2 * COST.bulletPoint + COST.bulletListEnd;
+  const linesPerProject =
+    COST.projectHeading + 2 * COST.bulletPoint + COST.bulletListEnd;
   return {
     remainingLines: Math.round(remaining * 10) / 10,
     additionalProjects: Math.max(0, Math.floor(remaining / linesPerProject)),
@@ -278,27 +277,35 @@ export function assessJobDescriptionQuality(jobDescription, position) {
   if (isEntryLevel && hasSeniorRequirements) badSignals += 3;
 
   // Too many unrelated tech stacks for a specific role
-  const frontendKeywords = (jd.match(
-    /\b(react|vue|angular|svelte|next\.?js|html|css|tailwind|bootstrap)\b/gi,
-  ) || []).length;
-  const backendKeywords = (jd.match(
-    /\b(python|flask|django|pytorch|tensorflow|java|spring|node\.?js|express|ruby|rails|go|rust)\b/gi,
-  ) || []).length;
+  const frontendKeywords = (
+    jd.match(
+      /\b(react|vue|angular|svelte|next\.?js|html|css|tailwind|bootstrap)\b/gi,
+    ) || []
+  ).length;
+  const backendKeywords = (
+    jd.match(
+      /\b(python|flask|django|pytorch|tensorflow|java|spring|node\.?js|express|ruby|rails|go|rust)\b/gi,
+    ) || []
+  ).length;
   const isFrontendRole = /\b(frontend|front[- ]end|ui|ux)\b/i.test(pos);
   const isBackendRole = /\b(backend|back[- ]end|server|api)\b/i.test(pos);
   if (isFrontendRole && backendKeywords > 3) badSignals += 2;
   if (isBackendRole && frontendKeywords > 3) badSignals += 2;
 
   // Heavy HR buzzword density (non-technical requirements)
-  const hrBuzzwords = (jd.match(
-    /\b(synergy|paradigm|leverage|stakeholder|cross[- ]functional|holistic|proactive|dynamic|self[- ]starter|go[- ]getter|rockstar|ninja|guru|passionate|fast[- ]paced|wear many hats)\b/gi,
-  ) || []).length;
+  const hrBuzzwords = (
+    jd.match(
+      /\b(synergy|paradigm|leverage|stakeholder|cross[- ]functional|holistic|proactive|dynamic|self[- ]starter|go[- ]getter|rockstar|ninja|guru|passionate|fast[- ]paced|wear many hats)\b/gi,
+    ) || []
+  ).length;
   if (hrBuzzwords > 5) badSignals += 2;
 
   // Contradictory: asks for too many languages/frameworks for a single role
-  const allTechMentions = (jd.match(
-    /\b(python|java|javascript|typescript|c\+\+|c#|ruby|go|rust|swift|kotlin|scala|perl|php|r\b|matlab)\b/gi,
-  ) || []).length;
+  const allTechMentions = (
+    jd.match(
+      /\b(python|java|javascript|typescript|c\+\+|c#|ruby|go|rust|swift|kotlin|scala|perl|php|r\b|matlab)\b/gi,
+    ) || []
+  ).length;
   if (allTechMentions > 8) badSignals += 1;
 
   if (badSignals >= 4) return "bad";
