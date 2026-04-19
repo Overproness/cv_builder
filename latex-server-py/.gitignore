@@ -1,3 +1,6 @@
+# tectonic binary (downloaded during Vercel build via build.sh)
+bin/
+
 # Python
 __pycache__/
 *.py[cod]

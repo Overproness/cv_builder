@@ -11,7 +11,6 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
-import uvicorn
 
 app = FastAPI(title="LaTeX Compilation Server (tectonic)")
 
@@ -30,7 +29,6 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-API-Key"],
 )
 
-# Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -44,30 +42,45 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     duration_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
     logger.info(
-        "%s %s %s - %.2fms %s",
+        "%s %s %s - %.2fms",
         request.method,
         request.url.path,
         response.status_code,
         duration_ms,
-        datetime.now(timezone.utc).isoformat(),
     )
     return response
 
 
+def get_tectonic_path() -> str:
+    """
+    Resolve tectonic binary path.
+    On Vercel the binary is bundled into bin/ relative to the project root.
+    Locally it falls back to whatever is on PATH.
+    """
+    # api/index.py -> project root is one level up
+    project_root = Path(__file__).resolve().parent.parent
+    bundled = project_root / "bin" / "tectonic"
+    if bundled.is_file() and os.access(bundled, os.X_OK):
+        return str(bundled)
+    system = shutil.which("tectonic")
+    if system:
+        return system
+    raise RuntimeError(
+        "tectonic not found. Install it locally or run via Vercel (build.sh bundles it)."
+    )
+
+
 def check_tectonic() -> bool:
     try:
-        subprocess.run(
-            ["tectonic", "--version"],
-            capture_output=True,
-            check=True,
-        )
+        tectonic = get_tectonic_path()
+        subprocess.run([tectonic, "--version"], capture_output=True, check=True)
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except Exception:
         return False
 
 
 def validate_api_key(request: Request):
-    """Dependency: skip key check in development, enforce in production."""
+    """Skip key check in development, enforce in production."""
     if NODE_ENV == "development":
         return
     api_key = request.headers.get("x-api-key")
@@ -100,25 +113,28 @@ async def compile_latex(
     if not body.latex:
         raise HTTPException(status_code=400, detail="LaTeX content is required")
 
+    tectonic = get_tectonic_path()
     job_id = str(uuid.uuid4())
     work_dir = Path(tempfile.gettempdir()) / f"latex-{job_id}"
     tex_file = work_dir / "document.tex"
     pdf_file = work_dir / "document.pdf"
 
+    # tectonic downloads TeX packages on first run; cache them in /tmp
+    tectonic_cache = Path(tempfile.gettempdir()) / "tectonic-cache"
+
     try:
         work_dir.mkdir(parents=True, exist_ok=True)
         tex_file.write_text(body.latex, encoding="utf-8")
 
-        # tectonic handles multiple compilation passes internally
+        env = {**os.environ, "TECTONIC_CACHE_DIR": str(tectonic_cache)}
+
+        # tectonic handles multiple passes internally
         result = subprocess.run(
-            [
-                "tectonic",
-                "--outdir", str(work_dir),
-                str(tex_file),
-            ],
+            [tectonic, "--outdir", str(work_dir), str(tex_file)],
             capture_output=True,
             text=True,
             timeout=60,
+            env=env,
         )
 
         if not pdf_file.exists():
@@ -153,7 +169,9 @@ async def compile_latex(
         shutil.rmtree(work_dir, ignore_errors=True)
 
 
+# Local development entry point
 if __name__ == "__main__":
-    logger.info("LaTeX compilation server (tectonic) starting on port %d", PORT)
+    import uvicorn
+    logger.info("Starting server on port %d", PORT)
     logger.info("tectonic available: %s", check_tectonic())
     uvicorn.run(app, host="0.0.0.0", port=PORT)
