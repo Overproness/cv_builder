@@ -53,10 +53,27 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-TECTONIC_URL = (
-    "https://github.com/tectonic-typesetting/tectonic/releases/latest/download/"
-    "tectonic-x86_64-unknown-linux-musl.tar.gz"
+TECTONIC_ASSET_NAME = "x86_64-unknown-linux-musl.tar.gz"
+TECTONIC_RELEASES_API = (
+    "https://api.github.com/repos/tectonic-typesetting/tectonic/releases/latest"
 )
+
+
+def _get_tectonic_download_url() -> str:
+    """Fetch the latest release from GitHub API and return the correct asset URL."""
+    req = urllib.request.Request(
+        TECTONIC_RELEASES_API,
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "cv-builder"},
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        import json
+        data = json.loads(resp.read())
+    for asset in data.get("assets", []):
+        if asset["name"].endswith(TECTONIC_ASSET_NAME):
+            return asset["browser_download_url"]
+    raise RuntimeError(
+        f"No tectonic asset matching '{TECTONIC_ASSET_NAME}' found in latest release"
+    )
 
 
 def _download_tectonic() -> str:
@@ -65,8 +82,10 @@ def _download_tectonic() -> str:
     if dest.is_file() and os.access(str(dest), os.X_OK):
         return str(dest)
     logger.info("Downloading tectonic binary from GitHub...")
+    download_url = _get_tectonic_download_url()
+    logger.info("Resolved tectonic URL: %s", download_url)
     tar_path = Path(tempfile.gettempdir()) / "tectonic.tar.gz"
-    urllib.request.urlretrieve(TECTONIC_URL, str(tar_path))
+    urllib.request.urlretrieve(download_url, str(tar_path))
     with tarfile.open(str(tar_path)) as tf:
         tf.extractall(path=str(tar_path.parent))
     dest.chmod(0o755)
