@@ -1,5 +1,5 @@
 {
-    "buildCommand": "bash build.sh",
+    "installCommand": "bash build.sh",
     "functions": {
         "api/index.py": {
             "maxDuration": 60,
