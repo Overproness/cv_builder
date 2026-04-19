@@ -7,7 +7,7 @@ import {
   estimateRoomForMoreProjects,
 } from "./layoutEstimation.js";
 
-const MODEL_NAME = "gemini-3.1-flash-lite-preview-preview";
+const MODEL_NAME = "gemini-3.1-flash-lite-preview";
 
 // Pricing per 1M tokens (Gemini 2.0 Flash)
 const PRICING = {
