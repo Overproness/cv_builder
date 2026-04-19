@@ -25,6 +25,8 @@ import {
   LuRocket,
   LuSave,
   LuSparkles,
+  LuStar,
+  LuTag,
   LuTrash2,
   LuUser,
   LuWrench,
@@ -296,7 +298,7 @@ export default function CVPage() {
       ...prev,
       experience: [
         ...prev.experience,
-        { role: "", company: "", location: "", dates: "", points: [""] },
+        { role: "", company: "", location: "", dates: "", points: [""], tags: [], important: false },
       ],
     }));
   };
@@ -351,12 +353,29 @@ export default function CVPage() {
     }));
   };
 
+  const updateExperienceTags = (index, value) => {
+    const tags = value
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s);
+    updateExperience(index, "tags", tags);
+  };
+
+  const toggleExperienceImportant = (index) => {
+    setCV((prev) => ({
+      ...prev,
+      experience: prev.experience.map((exp, i) =>
+        i === index ? { ...exp, important: !exp.important } : exp,
+      ),
+    }));
+  };
+
   const addProject = () => {
     setCV((prev) => ({
       ...prev,
       projects: [
         ...prev.projects,
-        { name: "", technologies: "", dates: "", demo_link: "", points: [""] },
+        { name: "", technologies: "", dates: "", demo_link: "", points: [""], tags: [], important: false },
       ],
     }));
   };
@@ -408,6 +427,23 @@ export default function CVPage() {
     setCV((prev) => ({
       ...prev,
       projects: prev.projects.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateProjectTags = (index, value) => {
+    const tags = value
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s);
+    updateProject(index, "tags", tags);
+  };
+
+  const toggleProjectImportant = (index) => {
+    setCV((prev) => ({
+      ...prev,
+      projects: prev.projects.map((proj, i) =>
+        i === index ? { ...proj, important: !proj.important } : proj,
+      ),
     }));
   };
 
@@ -1007,6 +1043,35 @@ Software Engineer at Google (2020-Present)
                         />
                       </div>
 
+                      {/* Important + Tags row */}
+                      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleExperienceImportant(index)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-all shrink-0 ${
+                            exp.important
+                              ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 font-medium"
+                              : "border-border text-muted-foreground hover:border-amber-400/60"
+                          }`}
+                        >
+                          <LuStar
+                            className={`h-3.5 w-3.5 ${exp.important ? "fill-current" : ""}`}
+                          />
+                          {exp.important ? "Important" : "Mark as Important"}
+                        </button>
+                        <div className="flex-1 relative">
+                          <LuTag className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            value={(exp.tags || []).join(", ")}
+                            onChange={(e) =>
+                              updateExperienceTags(index, e.target.value)
+                            }
+                            className="pl-9 text-sm"
+                            placeholder="AI tags: frontend, react, leadership, web-dev (comma-separated)"
+                          />
+                        </div>
+                      </div>
+
                       <Label className="mb-2 block">Bullet Points</Label>
                       <div className="space-y-2">
                         {exp.points?.map((point, pIndex) => (
@@ -1122,6 +1187,35 @@ Software Engineer at Google (2020-Present)
                               updateProject(index, "demo_link", e.target.value)
                             }
                             placeholder="https://myproject.com or github.com/username/project"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Important + Tags row */}
+                      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleProjectImportant(index)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-all shrink-0 ${
+                            proj.important
+                              ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 font-medium"
+                              : "border-border text-muted-foreground hover:border-amber-400/60"
+                          }`}
+                        >
+                          <LuStar
+                            className={`h-3.5 w-3.5 ${proj.important ? "fill-current" : ""}`}
+                          />
+                          {proj.important ? "Important" : "Mark as Important"}
+                        </button>
+                        <div className="flex-1 relative">
+                          <LuTag className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            value={(proj.tags || []).join(", ")}
+                            onChange={(e) =>
+                              updateProjectTags(index, e.target.value)
+                            }
+                            className="pl-9 text-sm"
+                            placeholder="AI tags: backend, api, machine-learning (comma-separated)"
                           />
                         </div>
                       </div>

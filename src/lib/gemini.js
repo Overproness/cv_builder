@@ -497,8 +497,8 @@ export async function tailorCVForJob(
 CRITICAL 1-PAGE RESUME REQUIREMENT:
 - TARGET 85–90% page usage — the resume MUST feel full, not sparse
 - Be selective but aim to MAXIMIZE relevant content within the 1-page limit
-- Include ${targetExperience} experience entries, each with 2–3 bullet points
-- Include ${targetProjects} project entries with MAXIMUM 2 bullet points each
+- Include ${targetExperience} experience entries, preserving the EXACT bullet point count from the original Master CV entry (do NOT add extra bullet points)
+- Include ${targetProjects} project entries, preserving the EXACT bullet point count from the original Master CV entry (do NOT add extra bullet points)
 - Include ALL education entries (usually 1-2)
 - Adding more high-quality content is always better than leaving blank space
 
@@ -522,27 +522,31 @@ BLOCK-BASED SELECTION APPROACH:
   * ${masterCV.experience?.length || 0} experience blocks
   * ${masterCV.projects?.length || 0} project blocks
 - You must select the MOST RELEVANT blocks for this job
-- Use CONSISTENT CRITERIA: relevance score based on keyword matches, required skills, and recency
+- Use CONSISTENT CRITERIA: relevance score based on keyword matches, required skills, recency, and tags
+- IMPORTANT entries (important: true) MUST always be included regardless of relevance score
 
 CRITICAL REQUIREMENTS:
 1. Output ONLY valid JSON, no markdown code blocks or explanations
 2. Use a deterministic selection process:
-   a. Score each experience/project block by counting keyword matches with job description
-   b. Prioritize blocks with highest relevance scores
-   c. Include ALL education blocks (always relevant)
-   d. Include ${targetExperience} experience blocks (select highest scoring)
-   e. Include ${targetProjects} project blocks (select highest scoring)
+   a. Score each experience/project block by counting keyword matches with job description; use the entry's "tags" field as additional relevance signals
+   b. IMPORTANT entries (important: true) always score highest — include them unconditionally
+   c. Fill remaining slots with highest-scoring non-important blocks
+   d. Include ALL education blocks (always relevant)
+   e. Include ${targetExperience} experience blocks total (important entries first)
+   f. Include ${targetProjects} project blocks total (important entries first)
 3. For selected blocks, tailor bullet points to emphasize job-relevant keywords
-4. LIMIT each experience/project to 2-3 most impactful bullet points only
+4. PRESERVE the EXACT same number of bullet points as the original Master CV entry for each selected block — do NOT add extra bullet points
 5. Keep personal_info identical to Master CV
 6. Preserve demo_link field for projects if present in Master CV
 7. Use exact same JSON structure as Master CV PLUS add "ats_keywords" array and "jd_quality" field
 8. Ensure professional language and quantified achievements
+9. PROJECT TECH DUPLICATION: If a project's name already contains technology names as a subtitle (e.g. "ERP.js - MERN, Three.js, Tailwind"), do NOT repeat those same technologies in the technologies field. List only technologies that are NOT already visible in the project name.
 
 SELECTION CONSISTENCY RULES:
 - Always select the SAME blocks when given identical input
-- Base selection purely on keyword overlap and skill matches
-- If two blocks have equal scores, prefer the more recent one
+- Base selection purely on keyword overlap, tags, and skill matches
+- IMPORTANT entries override scoring — always include them
+- If two non-important blocks have equal scores, prefer the more recent one
 - Never randomly select - use deterministic scoring
 
 OUTPUT JSON STRUCTURE:
