@@ -165,7 +165,27 @@ async def compile_latex(
         work_dir.mkdir(parents=True, exist_ok=True)
         tex_file.write_text(body.latex, encoding="utf-8")
 
-        env = {**os.environ, "TECTONIC_CACHE_DIR": str(tectonic_cache)}
+        # Create a minimal fontconfig file so XeTeX doesn't fail with
+        # "Cannot load default config file: No such file: (null)" in
+        # environments (like Vercel) that have no system fontconfig.
+        fontconfig_dir = Path(tempfile.gettempdir()) / "fontconfig"
+        fontconfig_dir.mkdir(exist_ok=True)
+        fonts_conf = fontconfig_dir / "fonts.conf"
+        if not fonts_conf.exists():
+            fonts_conf.write_text(
+                '<?xml version="1.0"?>\n'
+                '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">\n'
+                "<fontconfig>\n"
+                "</fontconfig>\n"
+            )
+
+        env = {
+            **os.environ,
+            "TECTONIC_CACHE_DIR": str(tectonic_cache),
+            # Point fontconfig at our minimal config so XeTeX initialises
+            # cleanly and the glyphtounicode package can load properly.
+            "FONTCONFIG_FILE": str(fonts_conf),
+        }
 
         # tectonic handles multiple passes internally
         result = subprocess.run(
