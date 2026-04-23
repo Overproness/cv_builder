@@ -492,7 +492,11 @@ export default function CVPage() {
       dragOverInfo &&
       dragItem.current.section === dragOverInfo.section
     ) {
-      moveItem(dragItem.current.section, dragItem.current.index, dragOverInfo.index);
+      moveItem(
+        dragItem.current.section,
+        dragItem.current.index,
+        dragOverInfo.index,
+      );
     }
     dragItem.current = null;
     setDragOverInfo(null);
@@ -977,7 +981,8 @@ Software Engineer at Google (2020-Present)
                     <div
                       key={index}
                       className={`p-4 bg-muted/30 rounded-lg border transition-all ${
-                        dragOverInfo?.section === "education" && dragOverInfo?.index === index
+                        dragOverInfo?.section === "education" &&
+                        dragOverInfo?.index === index
                           ? "border-primary bg-primary/5"
                           : "border-border"
                       }`}
@@ -988,7 +993,9 @@ Software Engineer at Google (2020-Present)
                         <div className="flex items-center gap-2">
                           <div
                             draggable
-                            onDragStart={() => handleDragStart("education", index)}
+                            onDragStart={() =>
+                              handleDragStart("education", index)
+                            }
                             onDragEnd={handleDragEnd}
                             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 -ml-1 touch-none"
                             title="Drag to reorder"
@@ -1068,7 +1075,8 @@ Software Engineer at Google (2020-Present)
                     <div
                       key={index}
                       className={`p-4 bg-muted/30 rounded-lg border transition-all ${
-                        dragOverInfo?.section === "experience" && dragOverInfo?.index === index
+                        dragOverInfo?.section === "experience" &&
+                        dragOverInfo?.index === index
                           ? "border-primary bg-primary/5"
                           : "border-border"
                       }`}
@@ -1079,14 +1087,18 @@ Software Engineer at Google (2020-Present)
                         <div className="flex items-center gap-2">
                           <div
                             draggable
-                            onDragStart={() => handleDragStart("experience", index)}
+                            onDragStart={() =>
+                              handleDragStart("experience", index)
+                            }
                             onDragEnd={handleDragEnd}
                             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 -ml-1 touch-none"
                             title="Drag to reorder"
                           >
                             <LuGripVertical className="h-4 w-4" />
                           </div>
-                          <Badge variant="secondary">Position #{index + 1}</Badge>
+                          <Badge variant="secondary">
+                            Position #{index + 1}
+                          </Badge>
                         </div>
                         <Button
                           variant="ghost"
@@ -1226,7 +1238,8 @@ Software Engineer at Google (2020-Present)
                     <div
                       key={index}
                       className={`p-4 bg-muted/30 rounded-lg border transition-all ${
-                        dragOverInfo?.section === "projects" && dragOverInfo?.index === index
+                        dragOverInfo?.section === "projects" &&
+                        dragOverInfo?.index === index
                           ? "border-primary bg-primary/5"
                           : "border-border"
                       }`}
@@ -1237,14 +1250,18 @@ Software Engineer at Google (2020-Present)
                         <div className="flex items-center gap-2">
                           <div
                             draggable
-                            onDragStart={() => handleDragStart("projects", index)}
+                            onDragStart={() =>
+                              handleDragStart("projects", index)
+                            }
                             onDragEnd={handleDragEnd}
                             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 -ml-1 touch-none"
                             title="Drag to reorder"
                           >
                             <LuGripVertical className="h-4 w-4" />
                           </div>
-                          <Badge variant="secondary">Project #{index + 1}</Badge>
+                          <Badge variant="secondary">
+                            Project #{index + 1}
+                          </Badge>
                         </div>
                         <Button
                           variant="ghost"
