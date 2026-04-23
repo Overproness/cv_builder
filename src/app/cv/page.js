@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LuBriefcase,
   LuChevronRight,
@@ -16,6 +16,7 @@ import {
   LuGithub,
   LuGlobe,
   LuGraduationCap,
+  LuGripVertical,
   LuLinkedin,
   LuLoader,
   LuMail,
@@ -66,6 +67,8 @@ export default function CVPage() {
   const [allCVs, setAllCVs] = useState([]);
   const [cvName, setCvName] = useState("");
   const [aiEditPrompt, setAiEditPrompt] = useState("");
+  const dragItem = useRef(null);
+  const [dragOverInfo, setDragOverInfo] = useState(null);
 
   // Load existing CV on mount
   useEffect(() => {
@@ -461,6 +464,38 @@ export default function CVPage() {
         i === index ? { ...proj, important: !proj.important } : proj,
       ),
     }));
+  };
+
+  const moveItem = (section, fromIndex, toIndex) => {
+    if (fromIndex === toIndex) return;
+    setCV((prev) => {
+      const arr = [...prev[section]];
+      const [item] = arr.splice(fromIndex, 1);
+      arr.splice(toIndex, 0, item);
+      return { ...prev, [section]: arr };
+    });
+  };
+
+  const handleDragStart = (section, index) => {
+    dragItem.current = { section, index };
+  };
+
+  const handleDragEnter = (section, index) => {
+    if (dragItem.current && dragItem.current.section === section) {
+      setDragOverInfo({ section, index });
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (
+      dragItem.current &&
+      dragOverInfo &&
+      dragItem.current.section === dragOverInfo.section
+    ) {
+      moveItem(dragItem.current.section, dragItem.current.index, dragOverInfo.index);
+    }
+    dragItem.current = null;
+    setDragOverInfo(null);
   };
 
   const updateSkills = (category, value) => {
@@ -941,10 +976,27 @@ Software Engineer at Google (2020-Present)
                   {cv.education?.map((edu, index) => (
                     <div
                       key={index}
-                      className="p-4 bg-muted/30 rounded-lg border border-border"
+                      className={`p-4 bg-muted/30 rounded-lg border transition-all ${
+                        dragOverInfo?.section === "education" && dragOverInfo?.index === index
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      }`}
+                      onDragEnter={() => handleDragEnter("education", index)}
+                      onDragOver={(e) => e.preventDefault()}
                     >
                       <div className="flex justify-between items-start mb-3">
-                        <Badge variant="secondary">Entry #{index + 1}</Badge>
+                        <div className="flex items-center gap-2">
+                          <div
+                            draggable
+                            onDragStart={() => handleDragStart("education", index)}
+                            onDragEnd={handleDragEnd}
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 -ml-1 touch-none"
+                            title="Drag to reorder"
+                          >
+                            <LuGripVertical className="h-4 w-4" />
+                          </div>
+                          <Badge variant="secondary">Entry #{index + 1}</Badge>
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1015,10 +1067,27 @@ Software Engineer at Google (2020-Present)
                   {cv.experience?.map((exp, index) => (
                     <div
                       key={index}
-                      className="p-4 bg-muted/30 rounded-lg border border-border"
+                      className={`p-4 bg-muted/30 rounded-lg border transition-all ${
+                        dragOverInfo?.section === "experience" && dragOverInfo?.index === index
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      }`}
+                      onDragEnter={() => handleDragEnter("experience", index)}
+                      onDragOver={(e) => e.preventDefault()}
                     >
                       <div className="flex justify-between items-start mb-3">
-                        <Badge variant="secondary">Position #{index + 1}</Badge>
+                        <div className="flex items-center gap-2">
+                          <div
+                            draggable
+                            onDragStart={() => handleDragStart("experience", index)}
+                            onDragEnd={handleDragEnd}
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 -ml-1 touch-none"
+                            title="Drag to reorder"
+                          >
+                            <LuGripVertical className="h-4 w-4" />
+                          </div>
+                          <Badge variant="secondary">Position #{index + 1}</Badge>
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1156,10 +1225,27 @@ Software Engineer at Google (2020-Present)
                   {cv.projects?.map((proj, index) => (
                     <div
                       key={index}
-                      className="p-4 bg-muted/30 rounded-lg border border-border"
+                      className={`p-4 bg-muted/30 rounded-lg border transition-all ${
+                        dragOverInfo?.section === "projects" && dragOverInfo?.index === index
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      }`}
+                      onDragEnter={() => handleDragEnter("projects", index)}
+                      onDragOver={(e) => e.preventDefault()}
                     >
                       <div className="flex justify-between items-start mb-3">
-                        <Badge variant="secondary">Project #{index + 1}</Badge>
+                        <div className="flex items-center gap-2">
+                          <div
+                            draggable
+                            onDragStart={() => handleDragStart("projects", index)}
+                            onDragEnd={handleDragEnd}
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 -ml-1 touch-none"
+                            title="Drag to reorder"
+                          >
+                            <LuGripVertical className="h-4 w-4" />
+                          </div>
+                          <Badge variant="secondary">Project #{index + 1}</Badge>
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"

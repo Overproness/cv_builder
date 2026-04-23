@@ -47,7 +47,9 @@ function createModelSelector(apiKey) {
   return async function generate(request) {
     while (modelIndex < ALL_MODELS.length) {
       try {
-        const model = genAI.getGenerativeModel({ model: ALL_MODELS[modelIndex] });
+        const model = genAI.getGenerativeModel({
+          model: ALL_MODELS[modelIndex],
+        });
         return await model.generateContent(request);
       } catch (error) {
         if (isServiceUnavailable(error) && modelIndex < ALL_MODELS.length - 1) {
