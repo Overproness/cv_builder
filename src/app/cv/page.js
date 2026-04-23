@@ -298,7 +298,15 @@ export default function CVPage() {
       ...prev,
       experience: [
         ...prev.experience,
-        { role: "", company: "", location: "", dates: "", points: [""], tags: [], important: false },
+        {
+          role: "",
+          company: "",
+          location: "",
+          dates: "",
+          points: [""],
+          tags: [],
+          important: false,
+        },
       ],
     }));
   };
@@ -375,7 +383,15 @@ export default function CVPage() {
       ...prev,
       projects: [
         ...prev.projects,
-        { name: "", technologies: "", dates: "", demo_link: "", points: [""], tags: [], important: false },
+        {
+          name: "",
+          technologies: "",
+          dates: "",
+          demo_link: "",
+          points: [""],
+          tags: [],
+          important: false,
+        },
       ],
     }));
   };

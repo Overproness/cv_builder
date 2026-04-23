@@ -7,7 +7,9 @@ import {
   estimateRoomForMoreProjects,
 } from "./layoutEstimation.js";
 
-const MODEL_NAME = "gemini-3.1-flash-lite-preview";
+const PRIMARY_MODEL = "gemini-3.1-flash-lite-preview";
+const FALLBACK_MODELS = ["gemini-2.5-flash-lite"];
+const ALL_MODELS = [PRIMARY_MODEL, ...FALLBACK_MODELS];
 
 // Pricing per 1M tokens (Gemini 2.0 Flash)
 const PRICING = {
@@ -18,17 +20,47 @@ const PRICING = {
 // Max validation retry attempts
 const MAX_RETRIES = 2;
 
+function isServiceUnavailable(error) {
+  return (
+    error?.status === 503 ||
+    (error?.message || "").includes("503") ||
+    (error?.message || "").includes("Service Unavailable") ||
+    (error?.message || "").includes("high demand")
+  );
+}
+
 /**
- * Create a Gemini model instance from a user-provided API key
+ * Returns a stateful generate() caller that automatically falls back to the
+ * next model in ALL_MODELS when the current one returns 503.  Within a single
+ * exported function call the model index only advances — so all subsequent
+ * calls (e.g. validation-loop retries) reuse the already-working fallback.
  */
-function getModel(apiKey) {
+function createModelSelector(apiKey) {
   if (!apiKey) {
     throw new Error(
       "Gemini API key is required. Please add your API key in Settings.",
     );
   }
   const genAI = new GoogleGenerativeAI(apiKey);
-  return genAI.getGenerativeModel({ model: MODEL_NAME });
+  let modelIndex = 0;
+
+  return async function generate(request) {
+    while (modelIndex < ALL_MODELS.length) {
+      try {
+        const model = genAI.getGenerativeModel({ model: ALL_MODELS[modelIndex] });
+        return await model.generateContent(request);
+      } catch (error) {
+        if (isServiceUnavailable(error) && modelIndex < ALL_MODELS.length - 1) {
+          console.warn(
+            `Model ${ALL_MODELS[modelIndex]} unavailable (503), switching to ${ALL_MODELS[modelIndex + 1]}...`,
+          );
+          modelIndex++;
+          continue;
+        }
+        throw error;
+      }
+    }
+  };
 }
 
 /**
@@ -155,7 +187,7 @@ const CV_SCHEMA = `{
  * This ensures completeness and consistency by extracting individual blocks/entries
  */
 export async function parseRawTextToCV(rawText, apiKey) {
-  const model = getModel(apiKey);
+  const generate = createModelSelector(apiKey);
 
   const prompt = `You are an expert resume parser. Extract the user's professional information from the following raw text and structure it into a clean JSON format.
 
@@ -186,7 +218,7 @@ ${rawText}
 OUTPUT (valid JSON only with ALL blocks included):`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await generate(prompt);
     const response = await result.response;
     const tokenUsage = extractTokenUsage(response);
     let text = response.text();
@@ -231,7 +263,7 @@ export async function addToExistingCV(
   contentType = "auto",
   apiKey,
 ) {
-  const model = getModel(apiKey);
+  const generate = createModelSelector(apiKey);
 
   const prompt = `You are an expert resume editor. The user has an existing CV and wants to add new ${contentType === "auto" ? "experience or projects" : contentType} to it.
 
@@ -257,7 +289,7 @@ CONTENT TYPE: ${contentType}
 OUTPUT (updated CV as valid JSON with new content added at the top of relevant sections):`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await generate(prompt);
     const response = await result.response;
     const tokenUsage = extractTokenUsage(response);
     let text = response.text();
@@ -306,7 +338,7 @@ export async function generateCoverLetter(
   wordCount = 250,
   apiKey,
 ) {
-  const model = getModel(apiKey);
+  const generate = createModelSelector(apiKey);
   const allTokenUsages = [];
 
   // Strict bounds — tighter than before
@@ -350,7 +382,7 @@ OUTPUT: Plain text paragraphs only. Separate each paragraph with a blank line. N
       topP: 0.9,
     };
 
-    const result = await model.generateContent({
+    const result = await generate({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig,
     });
@@ -398,7 +430,7 @@ ${text}
 
 OUTPUT: The revised body text only (${targetMin}–${targetMax} words). Plain text paragraphs separated by blank lines. No markdown, no headers, no greeting, no sign-off. Count your words carefully before outputting.`;
 
-      const fixResult = await model.generateContent({
+      const fixResult = await generate({
         contents: [{ role: "user", parts: [{ text: correctionPrompt }] }],
         generationConfig: { temperature: 0.5, topP: 0.85 },
       });
@@ -450,7 +482,7 @@ export async function tailorCVForJob(
   apiKey,
   position = "",
 ) {
-  const model = getModel(apiKey);
+  const generate = createModelSelector(apiKey);
   const allTokenUsages = [];
 
   // Assess JD quality to determine keyword strategy
@@ -575,7 +607,7 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
       topK: 20,
     };
 
-    const result = await model.generateContent({
+    const result = await generate({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig,
     });
@@ -673,7 +705,7 @@ Fix ALL issues above and return the corrected JSON. Output ONLY valid JSON, no e
 Remember: combined project name + technologies must be ≤ 78 characters each.
 ${jdQuality !== "bad" ? "ats_keywords MUST be an empty array []." : "ats_keywords must have at most 15 short keywords."}`;
 
-      const fixResult = await model.generateContent({
+      const fixResult = await generate({
         contents: [{ role: "user", parts: [{ text: correctionPrompt }] }],
         generationConfig,
       });
@@ -716,7 +748,7 @@ export async function answerApplicationQuestions(
   companyInfo = "",
   apiKey,
 ) {
-  const model = getModel(apiKey);
+  const generate = createModelSelector(apiKey);
 
   const prompt = `You are an expert career coach helping a job applicant answer employer-specific application questions. Use the applicant's CV, the job description, and the company information to craft compelling, authentic answers.
 
@@ -749,7 +781,7 @@ Example: [{"question": "Why do you want to work here?", "answer": "..."}]`;
       topP: 0.9,
     };
 
-    const result = await model.generateContent({
+    const result = await generate({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig,
     });
@@ -798,7 +830,7 @@ export async function quickTailorKeywords(
   apiKey,
   position = "",
 ) {
-  const model = getModel(apiKey);
+  const generate = createModelSelector(apiKey);
   const allTokenUsages = [];
 
   const jdQuality = assessJobDescriptionQuality(jobDescription, position);
@@ -829,7 +861,7 @@ ${jobDescription}
 OUTPUT (valid JSON only with ONLY skills and ats_keywords modified):`;
 
   try {
-    const result = await model.generateContent({
+    const result = await generate({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.2, topP: 0.8 },
     });
@@ -859,7 +891,7 @@ OUTPUT (valid JSON only with ONLY skills and ats_keywords modified):`;
  * The AI modifies the specified sections based on the user's instructions.
  */
 export async function editCVWithAI(existingCV, editPrompt, apiKey) {
-  const model = getModel(apiKey);
+  const generate = createModelSelector(apiKey);
 
   const prompt = `You are an expert resume editor. The user wants to modify their Master CV based on the following instruction.
 
@@ -881,7 +913,7 @@ RULES:
 OUTPUT (updated CV as valid JSON):`;
 
   try {
-    const result = await model.generateContent({
+    const result = await generate({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.4, topP: 0.9 },
     });
