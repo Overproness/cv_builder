@@ -7,7 +7,7 @@ import {
   estimateRoomForMoreProjects,
 } from "./layoutEstimation.js";
 
-const PRIMARY_MODEL = "gemini-3.1-flash-lite-preview";
+const PRIMARY_MODEL = "gemini-3.1-flash-lite";
 const FALLBACK_MODELS = ["gemini-2.5-flash-lite"];
 const ALL_MODELS = [PRIMARY_MODEL, ...FALLBACK_MODELS];
 
