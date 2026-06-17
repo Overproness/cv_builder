@@ -49,6 +49,8 @@ export default function DocumentsPage() {
 
   // Resume viewer modal
   const [viewingResume, setViewingResume] = useState(null);
+  const [originalResumeLatex, setOriginalResumeLatex] = useState("");
+  const [savingResume, setSavingResume] = useState(false);
   const [pdfBlob, setPdfBlob] = useState(null);
   const [isCompiling, setIsCompiling] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -190,6 +192,7 @@ export default function DocumentsPage() {
 
   const openResume = (resume) => {
     setViewingResume(resume);
+    setOriginalResumeLatex(resume.latex);
     setPdfBlob(null);
     setShowPdfPreview(false);
   };
@@ -238,6 +241,35 @@ export default function DocumentsPage() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const saveResumeEdits = async () => {
+    if (!viewingResume) return;
+    setSavingResume(true);
+    try {
+      const res = await fetch(`/api/resume/${viewingResume._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latex: viewingResume.latex }),
+      });
+      if (res.ok) {
+        setResumes((prev) =>
+          prev.map((r) =>
+            r._id === viewingResume._id
+              ? { ...r, latex: viewingResume.latex }
+              : r,
+          ),
+        );
+        setOriginalResumeLatex(viewingResume.latex);
+        showMessage("Resume updated!", "success");
+      } else {
+        showMessage("Failed to update resume", "error");
+      }
+    } catch {
+      showMessage("Failed to update resume", "error");
+    } finally {
+      setSavingResume(false);
+    }
   };
 
   const saveCLEdits = async () => {
@@ -523,17 +555,19 @@ export default function DocumentsPage() {
         {/* Resume Viewer Modal */}
         {viewingResume && !showPdfPreview && (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-card rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-              <div className="flex items-center justify-between p-4 border-b border-border">
-                <div>
-                  <h2 className="font-semibold">{viewingResume.title}</h2>
+            <div className="bg-card rounded-xl shadow-xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between gap-3 p-4 border-b border-border">
+                <div className="min-w-0">
+                  <h2 className="font-semibold truncate">
+                    {viewingResume.title}
+                  </h2>
                   {viewingResume.company && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground truncate">
                       {viewingResume.company}
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap justify-end">
                   <Button
                     variant="outline"
                     size="sm"
@@ -560,6 +594,21 @@ export default function DocumentsPage() {
                     </Button>
                   )}
                   <Button
+                    variant="default"
+                    size="sm"
+                    onClick={saveResumeEdits}
+                    disabled={
+                      savingResume || viewingResume.latex === originalResumeLatex
+                    }
+                  >
+                    {savingResume ? (
+                      <LuLoader className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <LuCheck className="h-4 w-4 mr-1" />
+                    )}
+                    Update
+                  </Button>
+                  <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setViewingResume(null)}
@@ -568,7 +617,10 @@ export default function DocumentsPage() {
                   </Button>
                 </div>
               </div>
-              <div className="flex-1 overflow-hidden bg-[#1e1e1e]">
+              <div
+                className="flex-1 overflow-hidden bg-[#1e1e1e]"
+                style={{ minHeight: 0 }}
+              >
                 <Editor
                   height="100%"
                   defaultLanguage="latex"
@@ -577,7 +629,7 @@ export default function DocumentsPage() {
                   options={{
                     readOnly: false,
                     minimap: { enabled: false },
-                    fontSize: 12,
+                    fontSize: 13,
                     scrollBeyondLastLine: false,
                     padding: { top: 12 },
                   }}
@@ -586,6 +638,12 @@ export default function DocumentsPage() {
                   }
                 />
               </div>
+              {viewingResume.latex !== originalResumeLatex && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 px-4 py-2 border-t border-border bg-amber-500/5">
+                  You have unsaved changes — click &ldquo;Update&rdquo; to save
+                  them to this resume.
+                </p>
+              )}
             </div>
           </div>
         )}

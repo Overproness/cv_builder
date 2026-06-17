@@ -1168,6 +1168,33 @@ export default function TailorPage() {
                               <LuDownload className="h-4 w-4" />
                             </Button>
                             <Button
+                              onClick={compilePdf}
+                              disabled={isCompiling}
+                              size="sm"
+                            >
+                              {isCompiling ? (
+                                <>
+                                  <LuLoader className="animate-spin mr-1 h-3 w-3" />
+                                  Compiling...
+                                </>
+                              ) : (
+                                <>
+                                  <LuSparkles className="mr-1 h-3 w-3" />
+                                  Compile PDF
+                                </>
+                              )}
+                            </Button>
+                            {pdfBlob && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={downloadPdf}
+                                title="Download PDF"
+                              >
+                                <LuDownload className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
                               variant={savedResumeId ? "outline" : "default"}
                               size="sm"
                               onClick={saveResume}
