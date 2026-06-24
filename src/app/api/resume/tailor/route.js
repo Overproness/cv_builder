@@ -51,27 +51,9 @@ export async function POST(request) {
     // Record token usage
     await recordTokenUsage(userId, "tailor", tokenUsage);
 
-    // Enforce strict 1-page limits on the tailored CV before generating LaTeX
-    // Cap experience to 3 entries with max 3 bullet points each
-    if (tailoredCV.experience) {
-      tailoredCV.experience = tailoredCV.experience.slice(0, 3).map((exp) => ({
-        ...exp,
-        points: (exp.points || []).slice(0, 3),
-      }));
-    }
-    // Cap projects to 3 entries with max 3 bullet points each
-    if (tailoredCV.projects) {
-      tailoredCV.projects = tailoredCV.projects.slice(0, 3).map((proj) => ({
-        ...proj,
-        points: (proj.points || []).slice(0, 3),
-      }));
-    }
-    // Cap education to 2 entries
-    if (tailoredCV.education) {
-      tailoredCV.education = tailoredCV.education.slice(0, 2);
-    }
-
-    // Generate LaTeX from the tailored CV
+    // tailorCVForJob validates the final content against the one-page estimator.
+    // Do not trim selected entries here: doing so made otherwise-valid resumes
+    // noticeably sparse after the AI had filled the page.
     const latex = generateLatex(tailoredCV);
 
     // Estimate page usage for the frontend

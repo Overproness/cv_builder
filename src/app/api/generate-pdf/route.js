@@ -151,6 +151,7 @@ function normalizeCV(cvDoc) {
 		education: cv.education || [],
 		experience: cv.experience || [],
 		projects: cv.projects || [],
+		additional_qualifications: cv.additional_qualifications || [],
 		skills: cv.skills || {
 			languages: [],
 			frameworks: [],
@@ -302,4 +303,3 @@ export async function POST(request) {
 		);
 	}
 }
-    

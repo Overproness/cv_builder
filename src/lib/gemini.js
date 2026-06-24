@@ -3,6 +3,7 @@ import {
   assessJobDescriptionQuality,
   checkProjectHeadingFit,
   countWords,
+  estimateBulletLineCount,
   estimatePageUsage,
   estimateRoomForMoreProjects,
 } from "./layoutEstimation.js";
@@ -19,6 +20,10 @@ const PRICING = {
 
 // Max validation retry attempts
 const MAX_RETRIES = 2;
+const MAX_ENTRY_BULLETS = 3;
+const TARGET_PAGE_USAGE_MIN = 95;
+const TARGET_PAGE_USAGE_MAX = 99;
+const MAX_ENTRY_MULTILINE_BULLETS = 2;
 
 function isServiceUnavailable(error) {
   return (
@@ -29,6 +34,461 @@ function isServiceUnavailable(error) {
   );
 }
 
+function capEntriesForPlanning(entries = []) {
+  return entries.map((entry) => ({
+    ...entry,
+    points: Array.isArray(entry.points)
+      ? entry.points.slice(0, MAX_ENTRY_BULLETS)
+      : [],
+  }));
+}
+
+function enforceEntryBulletLimit(cvData) {
+  const capEntries = (entries = []) =>
+    entries.map((entry) => ({
+      ...entry,
+      points: Array.isArray(entry.points)
+        ? entry.points.slice(0, MAX_ENTRY_BULLETS)
+        : [],
+    }));
+
+  return {
+    ...cvData,
+    experience: capEntries(cvData.experience),
+    projects: capEntries(cvData.projects),
+  };
+}
+
+function getEntryBulletLimitIssues(cvData) {
+  const issues = [];
+  const sections = [
+    ["experience", cvData.experience || []],
+    ["project", cvData.projects || []],
+  ];
+
+  for (const [sectionName, entries] of sections) {
+    for (const entry of entries) {
+      const points = Array.isArray(entry.points) ? entry.points : [];
+      if (points.length > MAX_ENTRY_BULLETS) {
+        const label = entry.role || entry.name || entry.company || "entry";
+        issues.push(
+          `${sectionName} "${label}" has ${points.length} bullet points. ` +
+            `Select the strongest ${MAX_ENTRY_BULLETS} bullets for this job description; ` +
+            `they may be copied from the Master CV or rewritten, but do not output more than ${MAX_ENTRY_BULLETS}.`,
+        );
+      }
+    }
+  }
+
+  return issues;
+}
+
+function getEntryMultilineBulletIssues(cvData) {
+  const issues = [];
+  const sections = [
+    ["experience", cvData.experience || []],
+    ["project", cvData.projects || []],
+  ];
+
+  for (const [sectionName, entries] of sections) {
+    for (const entry of entries) {
+      const points = Array.isArray(entry.points) ? entry.points : [];
+      const multilineBullets = points
+        .map((point, index) => ({
+          index,
+          lines: estimateBulletLineCount(point),
+        }))
+        .filter(({ lines }) => lines > 1);
+
+      if (multilineBullets.length > MAX_ENTRY_MULTILINE_BULLETS) {
+        const label = entry.role || entry.name || entry.company || "entry";
+        const oneBasedIndexes = multilineBullets
+          .map(({ index }) => index + 1)
+          .join(", ");
+        issues.push(
+          `${sectionName} "${label}" has ${multilineBullets.length} bullets estimated to wrap across multiple lines ` +
+            `(bullets ${oneBasedIndexes}); max is ${MAX_ENTRY_MULTILINE_BULLETS}. ` +
+            `Keep only the strongest ${MAX_ENTRY_MULTILINE_BULLETS} bullets as multi-line bullets, and shorten the remaining supporting bullets so they fit on one line.`,
+        );
+      }
+    }
+  }
+
+  return issues;
+}
+
+function normalizeSourceText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/https?:\/\//g, "")
+    .replace(/www\./g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeSourceUrl(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/+$/, "");
+}
+
+function compactSourceText(value) {
+  return normalizeSourceText(value).replace(/\s+/g, "");
+}
+
+function getProjectCoreName(name) {
+  return String(name || "")
+    .split(/\s+[|:–—-]\s+|\s+\|\s+|\|/)[0]
+    .trim();
+}
+
+function sourceSimilarity(a, b) {
+  const normalizedA = normalizeSourceText(a);
+  const normalizedB = normalizeSourceText(b);
+  if (!normalizedA || !normalizedB) return 0;
+
+  const compactA = compactSourceText(normalizedA);
+  const compactB = compactSourceText(normalizedB);
+  if (
+    compactA.length >= 4 &&
+    compactB.length >= 4 &&
+    (compactA.includes(compactB) || compactB.includes(compactA))
+  ) {
+    return 1;
+  }
+
+  const tokensA = new Set(normalizedA.split(/\s+/).filter((token) => token.length > 2));
+  const tokensB = new Set(normalizedB.split(/\s+/).filter((token) => token.length > 2));
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+
+  let overlap = 0;
+  for (const token of tokensA) {
+    if (tokensB.has(token)) overlap++;
+  }
+
+  return overlap / Math.min(tokensA.size, tokensB.size);
+}
+
+function findMatchingSourceEntry(entry, sourceEntries = [], sectionName) {
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const source of sourceEntries) {
+    let score;
+    if (sectionName === "projects") {
+      score = Math.max(
+        sourceSimilarity(entry.name, source.name),
+        sourceSimilarity(getProjectCoreName(entry.name), getProjectCoreName(source.name)),
+      );
+      const generatedLink = normalizeSourceUrl(entry.demo_link);
+      const sourceLink = normalizeSourceUrl(source.demo_link);
+      if (generatedLink && sourceLink && generatedLink === sourceLink) {
+        score = Math.max(score, 1);
+      }
+    } else {
+      score = Math.max(
+        sourceSimilarity(`${entry.role || ""} ${entry.company || ""}`, `${source.role || ""} ${source.company || ""}`),
+        sourceSimilarity(entry.company, source.company),
+      );
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = source;
+    }
+  }
+
+  return bestScore >= 0.65 ? bestMatch : null;
+}
+
+function formatAllowedSourceEntries(masterCV) {
+  const experience = (masterCV.experience || [])
+    .map((entry, index) => `${index + 1}. ${entry.role || "Role"} at ${entry.company || "Company"}`)
+    .join("\n");
+  const projects = (masterCV.projects || [])
+    .map((entry, index) => {
+      const link = entry.demo_link ? ` | link: ${entry.demo_link}` : " | no source link";
+      return `${index + 1}. ${entry.name || "Project"}${link}`;
+    })
+    .join("\n");
+
+  return `Allowed experience entries:\n${experience || "(none)"}\n\nAllowed project entries:\n${projects || "(none)"}`;
+}
+
+function getSourceSelectionIssues(cvData, masterCV) {
+  const issues = [];
+
+  for (const exp of cvData.experience || []) {
+    if (!findMatchingSourceEntry(exp, masterCV.experience || [], "experience")) {
+      issues.push(
+        `Experience "${exp.role || ""}" at "${exp.company || ""}" does not match any source experience entry in the Master CV. Select only from the allowed source entries.`,
+      );
+    }
+  }
+
+  for (const project of cvData.projects || []) {
+    const sourceProject = findMatchingSourceEntry(project, masterCV.projects || [], "projects");
+    if (!sourceProject) {
+      issues.push(
+        `Project "${project.name || ""}" does not match any source project in the Master CV. Remove it and replace it only with a real Master CV project if space allows.`,
+      );
+      continue;
+    }
+
+    const generatedLink = normalizeSourceUrl(project.demo_link);
+    const sourceLink = normalizeSourceUrl(sourceProject.demo_link);
+    if (generatedLink && generatedLink !== sourceLink) {
+      issues.push(
+        `Project "${project.name || ""}" uses a link that is not in the Master CV. Preserve the source demo_link exactly when it exists; otherwise omit demo_link.`,
+      );
+    }
+  }
+
+  return issues;
+}
+
+function enforceSourceSelection(cvData, masterCV) {
+  const experience = (cvData.experience || []).filter((entry) =>
+    findMatchingSourceEntry(entry, masterCV.experience || [], "experience"),
+  );
+
+  const projects = [];
+  for (const project of cvData.projects || []) {
+    const sourceProject = findMatchingSourceEntry(
+      project,
+      masterCV.projects || [],
+      "projects",
+    );
+    if (!sourceProject) continue;
+
+    const reconciledProject = { ...project };
+    if (sourceProject.demo_link) {
+      reconciledProject.demo_link = sourceProject.demo_link;
+    } else {
+      delete reconciledProject.demo_link;
+    }
+    projects.push(reconciledProject);
+  }
+
+  return {
+    ...cvData,
+    experience,
+    projects,
+  };
+}
+
+const ROLE_TERM_EXPANSIONS = [
+  {
+    test: /\b(web\s*dev|web\s*developer|frontend|front\s*end|full\s*stack|fullstack|mern|react|next\.?js)\b/i,
+    terms: [
+      "web",
+      "website",
+      "frontend",
+      "backend",
+      "fullstack",
+      "full",
+      "stack",
+      "javascript",
+      "typescript",
+      "react",
+      "next",
+      "node",
+      "express",
+      "html",
+      "css",
+      "tailwind",
+      "api",
+      "rest",
+      "mern",
+      "mongodb",
+      "database",
+      "ui",
+      "responsive",
+      "dashboard",
+      "portal",
+      "crm",
+      "erp",
+      "auth",
+      "authentication",
+      "deployment",
+    ],
+    offTopicTerms: [
+      "nlp",
+      "machine",
+      "learning",
+      "deep",
+      "pytorch",
+      "tensorflow",
+      "classification",
+      "sentiment",
+      "entity",
+      "bias",
+      "eeg",
+      "research",
+      "academic",
+      "llm",
+    ],
+  },
+  {
+    test: /\b(data\s*science|machine\s*learning|ml\b|ai\b|nlp|deep\s*learning)\b/i,
+    terms: [
+      "data",
+      "science",
+      "machine",
+      "learning",
+      "ml",
+      "ai",
+      "nlp",
+      "python",
+      "pytorch",
+      "tensorflow",
+      "model",
+      "classification",
+      "analytics",
+      "sentiment",
+      "llm",
+    ],
+    offTopicTerms: [],
+  },
+];
+
+function getEntryText(entry) {
+  return [
+    entry.name,
+    entry.role,
+    entry.company,
+    entry.technologies,
+    ...(entry.tags || []),
+    ...(entry.points || []),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function getJobProfile(jobDescription, position) {
+  const source = `${position || ""} ${jobDescription || ""}`;
+  const normalized = normalizeSourceText(source);
+  const terms = new Set(
+    normalized.split(/\s+/).filter((token) => token.length > 2 && token !== "resume"),
+  );
+  const offTopicTerms = new Set();
+  let roleSpecific = false;
+
+  for (const expansion of ROLE_TERM_EXPANSIONS) {
+    if (expansion.test.test(source)) {
+      roleSpecific = true;
+      for (const term of expansion.terms) terms.add(term);
+      for (const term of expansion.offTopicTerms) offTopicTerms.add(term);
+    }
+  }
+
+  return { terms, offTopicTerms, roleSpecific };
+}
+
+function scoreEntryForJob(entry, jobProfile) {
+  const normalized = normalizeSourceText(getEntryText(entry));
+  if (!normalized) return 0;
+
+  const entryTokens = new Set(normalized.split(/\s+/).filter(Boolean));
+  let score = 0;
+  for (const term of jobProfile.terms) {
+    if (entryTokens.has(term) || normalized.includes(term)) score += 2;
+  }
+
+  let offTopicHits = 0;
+  for (const term of jobProfile.offTopicTerms) {
+    if (entryTokens.has(term) || normalized.includes(term)) offTopicHits++;
+  }
+
+  const hasDirectWebSignal = [
+    "web",
+    "frontend",
+    "backend",
+    "fullstack",
+    "react",
+    "next",
+    "javascript",
+    "typescript",
+    "node",
+    "mern",
+    "api",
+    "html",
+    "css",
+    "tailwind",
+    "portal",
+    "crm",
+    "erp",
+  ].some((term) => entryTokens.has(term) || normalized.includes(term));
+
+  if (jobProfile.roleSpecific && hasDirectWebSignal) score += 8;
+  if (jobProfile.roleSpecific && offTopicHits > 0) {
+    score -= offTopicHits * (hasDirectWebSignal ? 2 : 4);
+  }
+  if (entry.important) score += 3;
+
+  return score;
+}
+
+function compactResumeToTarget(cvData, masterCV, jobDescription, position) {
+  const targetMaxLines = estimatePageUsage(cvData).maxLines * (TARGET_PAGE_USAGE_MAX / 100);
+  let compacted = { ...cvData };
+  const jobProfile = getJobProfile(jobDescription, position);
+
+  function scoreSelectedEntry(entry, sectionName) {
+    const source = findMatchingSourceEntry(
+      entry,
+      masterCV[sectionName] || [],
+      sectionName,
+    );
+    return scoreEntryForJob(source || entry, jobProfile);
+  }
+
+  while (estimatePageUsage(compacted).layoutLines > targetMaxLines) {
+    const candidates = [];
+    if ((compacted.projects || []).length > 1) {
+      compacted.projects.forEach((entry, index) => {
+        candidates.push({
+          section: "projects",
+          index,
+          score: scoreSelectedEntry(entry, "projects"),
+        });
+      });
+    }
+    if ((compacted.experience || []).length > 1) {
+      compacted.experience.forEach((entry, index) => {
+        candidates.push({
+          section: "experience",
+          index,
+          score: scoreSelectedEntry(entry, "experience"),
+        });
+      });
+    }
+    if ((compacted.additional_qualifications || []).length > 0) {
+      compacted.additional_qualifications.forEach((entry, index) => {
+        candidates.push({
+          section: "additional_qualifications",
+          index,
+          score: scoreEntryForJob(entry, jobProfile) - 2,
+        });
+      });
+    }
+
+    if (candidates.length === 0) break;
+
+    candidates.sort((a, b) => a.score - b.score);
+    const remove = candidates[0];
+    compacted = {
+      ...compacted,
+      [remove.section]: (compacted[remove.section] || []).filter(
+        (_entry, index) => index !== remove.index,
+      ),
+    };
+  }
+
+  return compacted;
+}
 /**
  * Returns a stateful generate() caller that automatically falls back to the
  * next model in ALL_MODELS when the current one returns 503.  Within a single
@@ -155,7 +615,9 @@ const CV_SCHEMA = `{
       "institution": "string",
       "location": "string",
       "degree": "string",
-      "dates": "string"
+      "dates": "string",
+      "gpa": "string (optional)",
+      "relevant_coursework": "string (optional, comma-separated)"
     }
   ],
   "experience": [
@@ -174,6 +636,15 @@ const CV_SCHEMA = `{
       "dates": "string",
       "demo_link": "string (URL, optional - deployed project or demo)",
       "points": ["string (bullet point describing the project)"]
+    }
+  ],
+  "additional_qualifications": [
+    {
+      "type": "certification | publication | achievement",
+      "title": "string",
+      "organization": "string (issuer, publisher, or awarding organization)",
+      "date": "string (optional)",
+      "link": "string (URL, optional)"
     }
   ],
   "skills": {
@@ -204,6 +675,8 @@ CRITICAL REQUIREMENTS:
 8. For skills, categorize them appropriately into languages, frameworks, tools, and libraries
 9. Preserve ALL bullet points for each experience and project - do not truncate or summarize
 10. Maintain chronological order (most recent first)
+11. Extract GPA and relevant coursework when explicitly present; otherwise leave those optional education fields empty
+12. Extract certifications, publications, awards, and notable achievements into additional_qualifications
 
 BLOCK EXTRACTION RULES:
 - An "education block" = one degree/institution entry
@@ -238,6 +711,7 @@ OUTPUT (valid JSON only with ALL blocks included):`;
     if (!parsed.education) parsed.education = [];
     if (!parsed.experience) parsed.experience = [];
     if (!parsed.projects) parsed.projects = [];
+    if (!parsed.additional_qualifications) parsed.additional_qualifications = [];
     if (!parsed.skills)
       parsed.skills = {
         languages: [],
@@ -308,6 +782,9 @@ OUTPUT (updated CV as valid JSON with new content added at the top of relevant s
     if (!parsed.education) parsed.education = existingCV.education || [];
     if (!parsed.experience) parsed.experience = existingCV.experience || [];
     if (!parsed.projects) parsed.projects = existingCV.projects || [];
+    if (!parsed.additional_qualifications)
+      parsed.additional_qualifications =
+        existingCV.additional_qualifications || [];
     if (!parsed.skills)
       parsed.skills = existingCV.skills || {
         languages: [],
@@ -490,20 +967,25 @@ export async function tailorCVForJob(
   // Assess JD quality to determine keyword strategy
   const jdQuality = assessJobDescriptionQuality(jobDescription, position);
 
+  const qualificationEntries = (
+    masterCV.additional_qualifications || []
+  ).filter((qualification) => qualification.title?.trim());
+
   // Count blocks in master CV for validation
   const totalBlocks =
     (masterCV.education?.length || 0) +
     (masterCV.experience?.length || 0) +
-    (masterCV.projects?.length || 0);
+    (masterCV.projects?.length || 0) +
+    qualificationEntries.length;
 
   const { additionalProjects, additionalExperience } =
     estimateRoomForMoreProjects({
       ...masterCV,
-      experience: (masterCV.experience || []).slice(0, 2),
-      projects: (masterCV.projects || []).slice(0, 2),
+      experience: capEntriesForPlanning(masterCV.experience || []).slice(0, 2),
+      projects: capEntriesForPlanning(masterCV.projects || []).slice(0, 2),
     });
 
-  // Determine experience and project counts based on available space (target 90%)
+  // Determine experience and project counts based on available space (target 99%).
   const targetExperience = Math.min(
     masterCV.experience?.length || 0,
     Math.max(2, 2 + additionalExperience),
@@ -514,6 +996,13 @@ export async function tailorCVForJob(
     masterCV.projects?.length || 0,
     Math.max(2, 2 + additionalProjects),
   );
+
+  const targetQualifications = Math.min(
+    qualificationEntries.length,
+    3,
+  );
+
+  const allowedSourceEntries = formatAllowedSourceEntries(masterCV);
 
   const whiteTextInstructions =
     jdQuality === "bad"
@@ -529,12 +1018,32 @@ export async function tailorCVForJob(
   const prompt = `You are an expert resume consultant. Analyze the provided Master CV JSON against the Job Description and create a tailored resume that maximizes relevance.
 
 CRITICAL 1-PAGE RESUME REQUIREMENT:
-- TARGET 85–90% page usage — the resume MUST feel full, not sparse
+- TARGET ${TARGET_PAGE_USAGE_MIN}–${TARGET_PAGE_USAGE_MAX}% page usage — the resume MUST feel full, not sparse, while staying safely on one page
 - Be selective but aim to MAXIMIZE relevant content within the 1-page limit
-- Include ${targetExperience} experience entries, preserving the EXACT bullet point count from the original Master CV entry (do NOT add extra bullet points)
-- Include ${targetProjects} project entries, preserving the EXACT bullet point count from the original Master CV entry (do NOT add extra bullet points)
+- Start with at least ${targetExperience} experience entries and ${targetProjects} project entries when available, with each entry capped at ${MAX_ENTRY_BULLETS} bullet points
+- If the resume would land below ${TARGET_PAGE_USAGE_MIN}% page usage and more relevant source entries exist, add the next strongest experience/project/qualification entry before making existing bullets longer
 - Include ALL education entries (usually 1-2)
-- Adding more high-quality content is always better than leaving blank space
+- Include ${targetQualifications} relevant certification, publication, or achievement entries from additional_qualifications when available
+- Adding more high-quality, job-relevant entries is better than leaving blank space, but relevance and one-page fit are more important than filling every possible line
+
+BULLET LENGTH AND NATURALNESS:
+- Do NOT compress every bullet into a short fragment just to keep it on one line
+- Prefer natural, complete resume sentences with action, scope, method/tooling, and measurable result
+- Strong/high-relevance bullets should often be 18-28 words; supporting bullets can be 12-18 words
+- It is acceptable for the strongest bullets to wrap to a second line, but do not make every bullet long
+- If the resume feels sparse, prefer adding another relevant source entry; expand selected bullets only after entry diversity is already strong
+
+THREE-BULLET ENTRY CAP:
+- For every selected experience and project, review ALL original Master CV bullet points plus the job description
+- Choose the strongest ${MAX_ENTRY_BULLETS} resume bullets for that entry based on job relevance, measurable impact, recency, and keyword coverage
+- These bullets may be copied exactly from the Master CV or rewritten/combined to better fit the job description
+- If an original entry has fewer than ${MAX_ENTRY_BULLETS} meaningful source facts, use only the available meaningful bullets
+- Never output more than ${MAX_ENTRY_BULLETS} bullet points for any single experience or project entry
+
+MULTI-LINE BULLET CAP:
+- For every selected experience and project entry, at most ${MAX_ENTRY_MULTILINE_BULLETS} bullets may wrap across multiple lines
+- If an entry has ${MAX_ENTRY_BULLETS} bullets, keep at least one supporting bullet concise enough to fit on one line
+- Use multi-line bullets only for the strongest, most relevant facts; keep supporting bullets direct so the resume can include more entries
 
 PROJECT HEADING LINE-WIDTH CONSTRAINT:
 - Each project has a "name" and "technologies" field displayed on the SAME LINE
@@ -555,25 +1064,38 @@ BLOCK-BASED SELECTION APPROACH:
   * ${masterCV.education?.length || 0} education blocks
   * ${masterCV.experience?.length || 0} experience blocks
   * ${masterCV.projects?.length || 0} project blocks
+  * ${qualificationEntries.length} certification, publication, or achievement blocks
 - You must select the MOST RELEVANT blocks for this job
-- Use CONSISTENT CRITERIA: relevance score based on keyword matches, required skills, recency, and tags
+- Use CONSISTENT CRITERIA: relevance score based on keyword matches, required skills, role/domain fit, recency, and tags
+- If the job description is brief or generic, infer the intended role literally from it; for "web dev" or web developer resumes, prioritize web, frontend, backend, full-stack, React/Next.js, API, database, UI, dashboard, portal, CRM, ERP, and automation work
+- Do NOT include data-science, ML, NLP, research, EEG, or media-bias entries for a web-dev resume unless the job description explicitly asks for those areas
+- A dashboard or visualization mention alone is not enough to make an ML/NLP/data-science project relevant to web development
 - IMPORTANT entries (important: true) MUST always be included regardless of relevance score
+
+SOURCE LOCK - NO HALLUCINATED ENTRIES:
+- Experience and project entries MUST come from the allowed source entries below; do not invent new roles, projects, repositories, links, tools, metrics, or product claims
+- You may rewrite bullet wording for relevance, but every rewritten bullet must be grounded in facts from that source entry in the Master CV
+- Project names may be lightly shortened for layout, but the project identity must clearly match a real Master CV project
+- Preserve demo_link exactly from the Master CV when it exists; if the source project has no demo_link, omit demo_link entirely
+- Never create GitHub/demo links that are not present in the source project
+${allowedSourceEntries}
 
 CRITICAL REQUIREMENTS:
 1. Output ONLY valid JSON, no markdown code blocks or explanations
 2. Use a deterministic selection process:
-   a. Score each experience/project block by counting keyword matches with job description; use the entry's "tags" field as additional relevance signals
+   a. Score each experience/project/additional qualification block by counting keyword matches with job description; use the entry's "tags" field as additional relevance signals
    b. IMPORTANT entries (important: true) always score highest — include them unconditionally
    c. Fill remaining slots with highest-scoring non-important blocks
    d. Include ALL education blocks (always relevant)
-   e. Include ${targetExperience} experience blocks total (important entries first)
-   f. Include ${targetProjects} project blocks total (important entries first)
-3. For selected blocks, tailor bullet points to emphasize job-relevant keywords
-4. PRESERVE the EXACT same number of bullet points as the original Master CV entry for each selected block — do NOT add extra bullet points
+   e. Include at least ${targetExperience} experience blocks when available, then add more if needed to reach the page target without exceeding one page
+   f. Include at least ${targetProjects} project blocks when available, then add more if needed to reach the page target without exceeding one page
+   g. Include ${targetQualifications} additional_qualifications blocks total when available (important entries first)
+3. For selected experience/project blocks, choose or rewrite the best ${MAX_ENTRY_BULLETS} bullets for the job description using complete, natural sentences
+4. CAP every experience/project entry at ${MAX_ENTRY_BULLETS} bullet points and at most ${MAX_ENTRY_MULTILINE_BULLETS} multi-line bullets; do not preserve extra low-relevance bullets just because they exist in the Master CV
 5. Keep personal_info identical to Master CV
-6. Preserve demo_link field for projects if present in Master CV
+6. Preserve demo_link field exactly from the matching Master CV project; do not invent or modify links
 7. Use exact same JSON structure as Master CV PLUS add "ats_keywords" array and "jd_quality" field
-8. Ensure professional language and quantified achievements
+8. Ensure professional language, quantified achievements, and varied sentence lengths without inventing facts not present in the Master CV
 9. PROJECT TECH DUPLICATION: If a project's name already contains technology names as a subtitle (e.g. "ERP.js - MERN, Three.js, Tailwind"), do NOT repeat those same technologies in the technologies field. List only technologies that are NOT already visible in the project name.
 
 SELECTION CONSISTENCY RULES:
@@ -589,6 +1111,7 @@ OUTPUT JSON STRUCTURE:
   "education": [ ... ],
   "experience": [ ... ],
   "projects": [ ... ],
+  "additional_qualifications": [ ... ],
   "skills": { ... },
   "ats_keywords": [...],
   "jd_quality": "${jdQuality}"
@@ -623,6 +1146,8 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
     if (!parsed.education) parsed.education = [];
     if (!parsed.experience) parsed.experience = [];
     if (!parsed.projects) parsed.projects = [];
+    if (!parsed.additional_qualifications)
+      parsed.additional_qualifications = [];
     if (!parsed.skills)
       parsed.skills = masterCV.skills || {
         languages: [],
@@ -638,39 +1163,67 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       const issues = [];
 
-      // 1. Check page fit
+      // 1. Enforce source selection and per-entry bullet cap
+      issues.push(...getSourceSelectionIssues(parsed, masterCV));
+      issues.push(...getEntryBulletLimitIssues(parsed));
+      issues.push(...getEntryMultilineBulletIssues(parsed));
+
+      // 2. Check page fit
       const pageEstimate = estimatePageUsage(parsed);
       if (!pageEstimate.fits) {
         issues.push(
-          `Resume exceeds 1 page (${pageEstimate.usagePercent}% full, ${pageEstimate.overflow} lines over). ` +
-            `Reduce content: remove the least relevant bullet point from each experience/project, ` +
-            `or remove the least relevant project entirely.`,
+          `Resume exceeds 1 page (${pageEstimate.layoutUsagePercent || pageEstimate.usagePercent}% layout usage, ${pageEstimate.overflow} lines over). ` +
+            `Remove the least job-relevant project, experience, or qualification entry first; ` +
+            `then shorten the longest low-relevance bullets while keeping each entry at no more than ${MAX_ENTRY_BULLETS} bullets.`,
         );
-      } else if (pageEstimate.usagePercent < 85) {
+      } else if (pageEstimate.usagePercent > TARGET_PAGE_USAGE_MAX) {
+        issues.push(
+          `Resume is too close to the page limit at ${pageEstimate.usagePercent}% full (${pageEstimate.totalLines}/${pageEstimate.maxLines} lines). ` +
+            `Target is ${TARGET_PAGE_USAGE_MIN}–${TARGET_PAGE_USAGE_MAX}% page usage. Remove the least job-relevant entry first, then slightly shorten the longest low-relevance bullets or reduce low-value skills while preserving source accuracy.`,
+        );
+      } else if (pageEstimate.usagePercent < TARGET_PAGE_USAGE_MIN) {
         const expCount = parsed.experience?.length || 0;
         const projCount = parsed.projects?.length || 0;
-        const canAddExp = expCount < targetExperience;
-        const canAddProj = projCount < targetProjects;
+        const qualificationCount = parsed.additional_qualifications?.length || 0;
+        const availableExperience = masterCV.experience?.length || 0;
+        const availableProjects = masterCV.projects?.length || 0;
+        const canAddExp = expCount < availableExperience;
+        const canAddProj = projCount < availableProjects;
+        const canAddQualifications =
+          qualificationCount < targetQualifications;
         const suggestions = [];
-        if (canAddExp)
-          suggestions.push(
-            `add ${targetExperience - expCount} more experience entry/entries from the Master CV (currently have ${expCount}, target is ${targetExperience})`,
+        if (canAddExp) {
+          const additionalExpCount = Math.min(
+            Math.max(1, targetExperience - expCount),
+            availableExperience - expCount,
           );
-        if (canAddProj)
           suggestions.push(
-            `add ${targetProjects - projCount} more project entry/entries from the Master CV (currently have ${projCount}, target is ${targetProjects})`,
+            `add ${additionalExpCount} more high-relevance experience entry/entries from the Master CV if they keep the resume within ${TARGET_PAGE_USAGE_MAX}% usage`,
           );
-        if (suggestions.length === 0)
+        }
+        if (canAddProj) {
+          const additionalProjectCount = Math.min(
+            Math.max(1, targetProjects - projCount),
+            availableProjects - projCount,
+          );
           suggestions.push(
-            `expand existing bullet points with more detail or add a 3rd bullet point to 1-2 entries`,
+            `add ${additionalProjectCount} more high-relevance project entry/entries from the Master CV if they keep the resume within ${TARGET_PAGE_USAGE_MAX}% usage`,
           );
+        }
+        if (canAddQualifications)
+          suggestions.push(
+            `add ${targetQualifications - qualificationCount} more relevant certification, publication, or achievement entry/entries from the Master CV`,
+          );
+        suggestions.push(
+          `prefer adding another source entry before expanding existing bullets; if every relevant source entry is already included, expand only selected high-value bullets while keeping at most ${MAX_ENTRY_MULTILINE_BULLETS} multi-line bullets per entry`,
+        );
         issues.push(
           `Resume is only ${pageEstimate.usagePercent}% full (${pageEstimate.totalLines}/${pageEstimate.maxLines} lines). ` +
-            `Target is 85–90% page usage. To fill the page: ${suggestions.join("; ")}.`,
+            `Target is ${TARGET_PAGE_USAGE_MIN}–${TARGET_PAGE_USAGE_MAX}% page usage. To fill the page: ${suggestions.join("; ")}.`,
         );
       }
 
-      // 2. Check project heading widths
+      // 3. Check project heading widths
       for (const proj of parsed.projects) {
         const headingCheck = checkProjectHeadingFit(
           proj.name,
@@ -685,7 +1238,7 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
         }
       }
 
-      // 3. If JD is not bad, ensure ats_keywords is empty
+      // 4. If JD is not bad, ensure ats_keywords is empty
       if (jdQuality !== "bad" && parsed.ats_keywords?.length > 0) {
         issues.push(
           `This is a reasonable job description — do not use white-text keywords. ` +
@@ -700,11 +1253,14 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
 
 ${issues.map((issue, i) => `${i + 1}. ${issue}`).join("\n")}
 
+Here are the allowed Master CV source entries:
+${allowedSourceEntries}
+
 Here is the current JSON:
 ${JSON.stringify(parsed, null, 2)}
 
 Fix ALL issues above and return the corrected JSON. Output ONLY valid JSON, no explanations.
-Remember: combined project name + technologies must be ≤ 78 characters each.
+Remember: every experience/project entry must come from the allowed Master CV source entries, every project link must be preserved exactly from its source or omitted, every experience/project entry must have at most ${MAX_ENTRY_BULLETS} bullets and at most ${MAX_ENTRY_MULTILINE_BULLETS} multi-line bullets, choose the best grounded bullets for the job description, and keep combined project name + technologies ≤ 78 characters each.
 ${jdQuality !== "bad" ? "ats_keywords MUST be an empty array []." : "ats_keywords must have at most 15 short keywords."}`;
 
       const fixResult = await generate({
@@ -723,8 +1279,18 @@ ${jdQuality !== "bad" ? "ats_keywords MUST be an empty array []." : "ats_keyword
         personal_info: fixParsed.personal_info || parsed.personal_info,
         jd_quality: jdQuality,
       };
+      if (!parsed.education) parsed.education = [];
+      if (!parsed.experience) parsed.experience = [];
+      if (!parsed.projects) parsed.projects = [];
+      if (!parsed.additional_qualifications)
+        parsed.additional_qualifications = [];
+      if (!parsed.skills) parsed.skills = masterCV.skills || {};
       if (!parsed.ats_keywords) parsed.ats_keywords = [];
     }
+
+    parsed = enforceSourceSelection(parsed, masterCV);
+    parsed = enforceEntryBulletLimit(parsed);
+    parsed = compactResumeToTarget(parsed, masterCV, jobDescription, position);
 
     return { data: parsed, tokenUsage: mergeTokenUsage(...allTokenUsages) };
   } catch (error) {
@@ -928,6 +1494,9 @@ OUTPUT (updated CV as valid JSON):`;
     if (!parsed.education) parsed.education = existingCV.education || [];
     if (!parsed.experience) parsed.experience = existingCV.experience || [];
     if (!parsed.projects) parsed.projects = existingCV.projects || [];
+    if (!parsed.additional_qualifications)
+      parsed.additional_qualifications =
+        existingCV.additional_qualifications || [];
     if (!parsed.skills)
       parsed.skills = existingCV.skills || {
         languages: [],

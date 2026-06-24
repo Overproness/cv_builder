@@ -46,6 +46,7 @@ const emptyCVTemplate = {
   education: [],
   experience: [],
   projects: [],
+  additional_qualifications: [],
   skills: {
     languages: [],
     frameworks: [],
@@ -275,7 +276,14 @@ export default function CVPage() {
       ...prev,
       education: [
         ...prev.education,
-        { institution: "", location: "", degree: "", dates: "" },
+        {
+          institution: "",
+          location: "",
+          degree: "",
+          dates: "",
+          gpa: "",
+          relevant_coursework: "",
+        },
       ],
     }));
   };
@@ -385,7 +393,6 @@ export default function CVPage() {
     setCV((prev) => ({
       ...prev,
       projects: [
-        ...prev.projects,
         {
           name: "",
           technologies: "",
@@ -395,6 +402,7 @@ export default function CVPage() {
           tags: [],
           important: false,
         },
+        ...prev.projects,
       ],
     }));
   };
@@ -462,6 +470,41 @@ export default function CVPage() {
       ...prev,
       projects: prev.projects.map((proj, i) =>
         i === index ? { ...proj, important: !proj.important } : proj,
+      ),
+    }));
+  };
+
+  const addQualification = (type) => {
+    setCV((prev) => ({
+      ...prev,
+      additional_qualifications: [
+        {
+          type,
+          title: "",
+          organization: "",
+          date: "",
+          link: "",
+        },
+        ...(prev.additional_qualifications || []),
+      ],
+    }));
+  };
+
+  const updateQualification = (index, field, value) => {
+    setCV((prev) => ({
+      ...prev,
+      additional_qualifications: (prev.additional_qualifications || []).map(
+        (qualification, i) =>
+          i === index ? { ...qualification, [field]: value } : qualification,
+      ),
+    }));
+  };
+
+  const removeQualification = (index) => {
+    setCV((prev) => ({
+      ...prev,
+      additional_qualifications: (prev.additional_qualifications || []).filter(
+        (_, i) => i !== index,
       ),
     }));
   };
@@ -728,7 +771,7 @@ export default function CVPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <p className="text-muted-foreground">
-                  Describe a new job, internship, or project you've completed.
+                  Describe a new job, internship, or project you&apos;ve completed.
                   AI will parse it and add it to your CV.
                 </p>
 
@@ -1045,6 +1088,24 @@ Software Engineer at Google (2020-Present)
                             updateEducation(index, "dates", e.target.value)
                           }
                           placeholder="Dates (e.g., Aug 2018 - May 2022)"
+                        />
+                        <Input
+                          value={edu.gpa || ""}
+                          onChange={(e) =>
+                            updateEducation(index, "gpa", e.target.value)
+                          }
+                          placeholder="GPA (Optional, e.g., 3.8/4.0)"
+                        />
+                        <Input
+                          value={edu.relevant_coursework || ""}
+                          onChange={(e) =>
+                            updateEducation(
+                              index,
+                              "relevant_coursework",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="Relevant coursework (Optional, comma-separated)"
                         />
                       </div>
                     </div>
@@ -1384,6 +1445,136 @@ Software Engineer at Google (2020-Present)
                   {(!cv.projects || cv.projects.length === 0) && (
                     <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
                       <p className="text-muted-foreground">No projects yet.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Certifications, Publications & Achievements */}
+              <Card>
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <LuFileText className="h-5 w-5 text-primary" />{" "}
+                    Certifications, Publications & Achievements
+                  </CardTitle>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addQualification("certification")}
+                    >
+                      <LuPlus className="mr-1 h-4 w-4" /> Certification
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addQualification("publication")}
+                    >
+                      <LuPlus className="mr-1 h-4 w-4" /> Publication
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addQualification("achievement")}
+                    >
+                      <LuPlus className="mr-1 h-4 w-4" /> Achievement
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(cv.additional_qualifications || []).map(
+                    (qualification, index) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-muted/30 rounded-lg border border-border"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <Badge variant="secondary">
+                            {qualification.type || "achievement"}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeQualification(index)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <LuTrash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          <select
+                            value={qualification.type || "achievement"}
+                            onChange={(e) =>
+                              updateQualification(
+                                index,
+                                "type",
+                                e.target.value,
+                              )
+                            }
+                            className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                            aria-label="Qualification type"
+                          >
+                            <option value="certification">Certification</option>
+                            <option value="publication">Publication</option>
+                            <option value="achievement">Achievement</option>
+                          </select>
+                          <Input
+                            value={qualification.title || ""}
+                            onChange={(e) =>
+                              updateQualification(
+                                index,
+                                "title",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Title"
+                          />
+                          <Input
+                            value={qualification.organization || ""}
+                            onChange={(e) =>
+                              updateQualification(
+                                index,
+                                "organization",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Issuer, publisher, or awarding organization"
+                          />
+                          <Input
+                            value={qualification.date || ""}
+                            onChange={(e) =>
+                              updateQualification(
+                                index,
+                                "date",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Date (Optional)"
+                          />
+                          <Input
+                            value={qualification.link || ""}
+                            onChange={(e) =>
+                              updateQualification(
+                                index,
+                                "link",
+                                e.target.value,
+                              )
+                            }
+                            className="md:col-span-2"
+                            placeholder="Credential, publication, or award link (Optional)"
+                          />
+                        </div>
+                      </div>
+                    ),
+                  )}
+
+                  {(!cv.additional_qualifications ||
+                    cv.additional_qualifications.length === 0) && (
+                    <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
+                      <p className="text-muted-foreground">
+                        Add only the certifications, publications, or achievements
+                        you want to appear on your resume.
+                      </p>
                     </div>
                   )}
                 </CardContent>

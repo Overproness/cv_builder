@@ -94,6 +94,14 @@ function generatePreamble() {
     \\end{tabular*}\\vspace{-7pt}
 }
 
+\\newcommand{\\resumeEducationDetail}[1]{
+    \\vspace{-5pt}\\item[]\\small{\\textit{Relevant Coursework:} #1}\\vspace{-7pt}
+}
+
+\\newcommand{\\resumeQualification}[3]{
+    \\vspace{-2pt}\\item\\small{\\textbf{#1:} #2 \\hfill \\textit{#3}}\\vspace{-5pt}
+}
+
 \\newcommand{\\resumeSubItem}[1]{\\resumeItem{#1}\\vspace{-4pt}}
 
 \\renewcommand\\labelitemii{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}
@@ -163,10 +171,21 @@ function generateEducation(education) {
 `;
 
   for (const edu of education) {
+    const gpa = edu.gpa?.trim();
+    const degree = escapeLatex(edu.degree || "");
+    const degreeWithGpa = gpa
+      ? `${degree}${degree ? " \\textbar{} " : ""}GPA: ${escapeLatex(gpa)}`
+      : degree;
+
     section += `    \\resumeSubheading
       {${escapeLatex(edu.institution || "")}}{${escapeLatex(edu.location || "")}}
-      {${escapeLatex(edu.degree || "")}}{${escapeLatex(edu.dates || "")}}
+      {${degreeWithGpa}}{${escapeLatex(edu.dates || "")}}
 `;
+
+    if (edu.relevant_coursework?.trim()) {
+      section += `    \\resumeEducationDetail{${escapeLatex(edu.relevant_coursework)}}
+`;
+    }
   }
 
   section += `  \\resumeSubHeadingListEnd
@@ -272,6 +291,50 @@ function generateProjects(projects) {
   return section;
 }
 
+// Generate compact certifications, publications, and achievements section
+function generateAdditionalQualifications(qualifications) {
+  const entries = (qualifications || []).filter((qualification) =>
+    qualification.title?.trim(),
+  );
+  if (entries.length === 0) return "";
+
+  const labels = {
+    certification: "Certification",
+    publication: "Publication",
+    achievement: "Achievement",
+  };
+
+  let section = `%-----------CERTIFICATIONS, PUBLICATIONS & ACHIEVEMENTS-----------
+\\section{Certifications, Publications \\& Achievements}
+  \\resumeSubHeadingListStart
+`;
+
+  for (const qualification of entries) {
+    const type = labels[qualification.type] || "Achievement";
+    let title = escapeLatex(qualification.title || "");
+    if (qualification.link && title) {
+      const link = qualification.link.startsWith("http")
+        ? qualification.link
+        : `https://${qualification.link}`;
+      title = `\\href{${link}}{${title}}`;
+    }
+
+    const organization = escapeLatex(qualification.organization || "");
+    const date = escapeLatex(qualification.date || "");
+    const details = [title, organization].filter(Boolean).join(" — ");
+
+    if (details) {
+      section += `    \\resumeQualification{${type}}{${details}}{${date}}
+`;
+    }
+  }
+
+  section += `  \\resumeSubHeadingListEnd
+
+`;
+  return section;
+}
+
 // Generate skills section
 function generateSkills(skills) {
   if (!skills) return "";
@@ -318,6 +381,7 @@ export function generateLatex(cvData) {
   latex += generateEducation(cvData.education);
   latex += generateExperience(cvData.experience);
   latex += generateProjects(cvData.projects);
+  latex += generateAdditionalQualifications(cvData.additional_qualifications);
   latex += generateSkills(cvData.skills);
 
   // Add hidden ATS keywords ONLY for "bad" job descriptions (white text, invisible to humans)
@@ -355,6 +419,7 @@ export function getEmptyCVTemplate() {
     education: [],
     experience: [],
     projects: [],
+    additional_qualifications: [],
     skills: {
       languages: [],
       frameworks: [],

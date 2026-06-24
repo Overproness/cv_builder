@@ -25,7 +25,9 @@
 const PAGE_HEIGHT_PT = 684; // usable textheight in pt
 const BASELINE_SKIP = 13.6; // pt, for 11pt body
 const SMALL_BASELINE = 12.0; // pt, for \small (10pt)
-const MAX_LINES = Math.floor(PAGE_HEIGHT_PT / BASELINE_SKIP); // ~50
+// Empirically calibrated for Jake's dense resume template, where negative
+// vspace and \small text fit more visual rows than a plain 11pt baseline grid.
+const MAX_LINES = 57;
 
 // Character budget for a single heading line (tabular* 0.97\textwidth)
 // Project heading: left cell + right cell share 0.97 * 540pt ≈ 524pt
@@ -34,21 +36,61 @@ const HEADING_CHAR_BUDGET = 78;
 
 // Chars per line in body text (\small, full \textwidth)
 const BODY_CHARS_PER_LINE = 90;
+const BULLET_CHARS_PER_LINE = 88;
 
 // ─── Vertical space consumed by each element (in "line units") ──────────────
 
 const COST = {
   sectionHeading: 2.0, // \section{} + titlerule + vspace
   subheading: 2.2, // 2-row tabular* + vspace(-7pt) + surrounding space
+  educationDetail: 0.9, // optional relevant-coursework line
+  educationDetailWrap: 0.75,
   projectHeading: 1.5, // 1-row tabular* + vspace(-7pt)
+  qualification: 1.0, // compact certification/publication/achievement line
+  qualificationWrap: 0.8,
   bulletPoint: 1.0, // \resumeItem + vspace(-2pt)
+  bulletWrap: 0.95, // continuation line inside a wrapped \resumeItem
   bulletListEnd: 0.4, // \resumeItemListEnd vspace(-5pt)
   subheadingListGap: 0.7, // space between list items
   nameHeader: 3.0, // \Huge name + contact line + vspace
   skillCategory: 0.9, // one \textbf{Cat}{: ...} line
+  skillCategoryWrap: 0.75,
   skillSectionOverhead: 1.2, // section heading + itemize overhead
   atsKeywords: 1.5, // hidden white text block (generous)
 };
+
+function estimateTextWidthUnits(text) {
+  return String(text || "")
+    .split("")
+    .reduce((total, char) => {
+      if (/\s/.test(char)) return total + 0.35;
+      if (/[.,:;|!'`]/.test(char)) return total + 0.35;
+      if (/[-/()]/.test(char)) return total + 0.45;
+      if (/[ijlI\[\]]/.test(char)) return total + 0.5;
+      if (/[A-Z0-9]/.test(char)) return total + 0.95;
+      if (/[MW@#%&]/.test(char)) return total + 1.25;
+      return total + 0.8;
+    }, 0);
+}
+
+function estimateWrappedLineCount(text, lineBudget) {
+  const width = estimateTextWidthUnits(text);
+  return Math.max(1, Math.ceil(width / lineBudget));
+}
+
+export function estimateBulletLineCount(text) {
+  return estimateWrappedLineCount(text, BULLET_CHARS_PER_LINE);
+}
+
+function estimateWrappedLineCost(
+  text,
+  lineBudget,
+  firstLineCost,
+  continuationLineCost,
+) {
+  const lines = estimateWrappedLineCount(text, lineBudget);
+  return firstLineCost + (lines - 1) * continuationLineCost;
+}
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -57,21 +99,34 @@ const COST = {
  * Returns { totalLines, maxLines, fits, breakdown }
  */
 export function estimatePageUsage(cvData) {
-  let total = 0;
+  let visibleTotal = 0;
+  let layoutTotal = 0;
   const breakdown = {};
 
+  function addVisibleBreakdown(key, lines) {
+    visibleTotal += lines;
+    layoutTotal += lines;
+    breakdown[key] = Math.round(lines * 10) / 10;
+  }
+
   // Header
-  total += COST.nameHeader;
-  breakdown.header = COST.nameHeader;
+  addVisibleBreakdown("header", COST.nameHeader);
 
   // Education
   if (cvData.education?.length) {
     let eduLines = COST.sectionHeading;
-    for (const _edu of cvData.education) {
+    for (const edu of cvData.education) {
       eduLines += COST.subheading;
+      if (edu.relevant_coursework?.trim()) {
+        eduLines += estimateWrappedLineCost(
+          `Relevant Coursework: ${edu.relevant_coursework}`,
+          BODY_CHARS_PER_LINE,
+          COST.educationDetail,
+          COST.educationDetailWrap,
+        );
+      }
     }
-    total += eduLines;
-    breakdown.education = eduLines;
+    addVisibleBreakdown("education", eduLines);
   }
 
   // Experience
@@ -79,12 +134,18 @@ export function estimatePageUsage(cvData) {
     let expLines = COST.sectionHeading;
     for (const exp of cvData.experience) {
       expLines += COST.subheading;
+      for (const point of exp.points || []) {
+        expLines += estimateWrappedLineCost(
+          point,
+          BULLET_CHARS_PER_LINE,
+          COST.bulletPoint,
+          COST.bulletWrap,
+        );
+      }
       const pts = exp.points?.length || 0;
-      expLines += pts * COST.bulletPoint;
       if (pts > 0) expLines += COST.bulletListEnd;
     }
-    total += expLines;
-    breakdown.experience = expLines;
+    addVisibleBreakdown("experience", expLines);
   }
 
   // Projects
@@ -101,34 +162,65 @@ export function estimatePageUsage(cvData) {
       if (nameLen + techLen > HEADING_CHAR_BUDGET) {
         projLines += 0.8; // overflow onto second line
       }
+      for (const point of proj.points || []) {
+        projLines += estimateWrappedLineCost(
+          point,
+          BULLET_CHARS_PER_LINE,
+          COST.bulletPoint,
+          COST.bulletWrap,
+        );
+      }
       const pts = proj.points?.length || 0;
-      projLines += pts * COST.bulletPoint;
       if (pts > 0) projLines += COST.bulletListEnd;
     }
-    total += projLines;
-    breakdown.projects = projLines;
+    addVisibleBreakdown("projects", projLines);
+  }
+
+  // Certifications, publications, and achievements
+  const qualifications = (cvData.additional_qualifications || []).filter(
+    (qualification) => qualification.title?.trim(),
+  );
+  if (qualifications.length) {
+    let qualificationLines = COST.sectionHeading;
+    for (const qualification of qualifications) {
+      const lineText = [
+        qualification.title,
+        qualification.organization,
+        qualification.date,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      qualificationLines += estimateWrappedLineCost(
+        `Achievement: ${lineText}`,
+        BODY_CHARS_PER_LINE,
+        COST.qualification,
+        COST.qualificationWrap,
+      );
+    }
+    addVisibleBreakdown("additionalQualifications", qualificationLines);
   }
 
   // Skills
   if (cvData.skills) {
     const { languages, frameworks, tools, libraries } = cvData.skills;
-    const cats = [languages, frameworks, tools, libraries].filter(
-      (a) => a?.length > 0,
-    ).length;
-    if (cats > 0) {
-      const skillLines = COST.skillSectionOverhead + cats * COST.skillCategory;
-      total += skillLines;
-      breakdown.skills = skillLines;
-
-      // Check for long skill lines that may wrap
-      for (const arr of [languages, frameworks, tools, libraries]) {
-        if (arr) {
-          const lineLen = arr.join(", ").length + 20; // "Category: " prefix
-          if (lineLen > BODY_CHARS_PER_LINE) {
-            total += 0.5; // extra half-line for wrap
-          }
-        }
+    const categories = [
+      ["Languages", languages],
+      ["Frameworks", frameworks],
+      ["Developer Tools", tools],
+      ["Libraries", libraries],
+    ];
+    const presentCategories = categories.filter(([, values]) => values?.length);
+    if (presentCategories.length > 0) {
+      let skillLines = COST.skillSectionOverhead;
+      for (const [label, values] of presentCategories) {
+        skillLines += estimateWrappedLineCost(
+          `${label}: ${values.join(", ")}`,
+          BODY_CHARS_PER_LINE,
+          COST.skillCategory,
+          COST.skillCategoryWrap,
+        );
       }
+      addVisibleBreakdown("skills", skillLines);
     }
   }
 
@@ -137,16 +229,22 @@ export function estimatePageUsage(cvData) {
     const kwText = cvData.ats_keywords.join(", ");
     const kwLines = Math.ceil(kwText.length / BODY_CHARS_PER_LINE);
     const kwCost = Math.max(COST.atsKeywords, kwLines * 0.8);
-    total += kwCost;
-    breakdown.atsKeywords = kwCost;
+    layoutTotal += kwCost;
+    breakdown.atsKeywords = Math.round(kwCost * 10) / 10;
   }
 
   return {
-    totalLines: Math.round(total * 10) / 10,
+    totalLines: Math.round(visibleTotal * 10) / 10,
+    visibleLines: Math.round(visibleTotal * 10) / 10,
+    layoutLines: Math.round(layoutTotal * 10) / 10,
     maxLines: MAX_LINES,
-    fits: total <= MAX_LINES,
-    overflow: total > MAX_LINES ? Math.round((total - MAX_LINES) * 10) / 10 : 0,
-    usagePercent: Math.round((total / MAX_LINES) * 100),
+    fits: layoutTotal <= MAX_LINES,
+    overflow:
+      layoutTotal > MAX_LINES
+        ? Math.round((layoutTotal - MAX_LINES) * 10) / 10
+        : 0,
+    usagePercent: Math.round((visibleTotal / MAX_LINES) * 100),
+    layoutUsagePercent: Math.round((layoutTotal / MAX_LINES) * 100),
     breakdown,
   };
 }
@@ -241,17 +339,22 @@ export function estimateCoverLetterPageUsage(fullContent) {
 
 /**
  * Given a CV JSON, suggest how many additional projects could fit on the page.
- * Assumes each extra project ≈ 3.5 lines (heading + 2 bullets).
+ * Assumes each extra project/experience uses the tailored-resume cap of 3 bullets.
  */
 export function estimateRoomForMoreProjects(cvData) {
   const { totalLines, maxLines } = estimatePageUsage(cvData);
-  const TARGET_FILL = 0.9; // aim for 90% page usage
+  const TARGET_FILL = 0.99; // aim for 95-99% page usage without crowding
   const targetLines = maxLines * TARGET_FILL;
   const remaining = targetLines - totalLines;
+  const cappedEntryBulletCount = 3;
   const linesPerProject =
-    COST.projectHeading + 2 * COST.bulletPoint + COST.bulletListEnd;
+    COST.projectHeading +
+    cappedEntryBulletCount * COST.bulletPoint +
+    COST.bulletListEnd;
   const linesPerExperience =
-    COST.subheading + 2 * COST.bulletPoint + COST.bulletListEnd;
+    COST.subheading +
+    cappedEntryBulletCount * COST.bulletPoint +
+    COST.bulletListEnd;
   return {
     remainingLines: Math.round(remaining * 10) / 10,
     additionalProjects: Math.max(0, Math.floor(remaining / linesPerProject)),
