@@ -15,7 +15,7 @@
  *   Available vertical space ≈ 684 pt
  *   Baseline skip @ 11pt ≈ 13.6 pt → ≈ 50 text lines per page
  *
- *   Chars per line in \small (10pt CMR, 7.5 in width) ≈ 85–95 chars
+ *   Chars per line in \small (10pt CMR, 7.5 in width) ≈ 100–110 chars
  *   The tabular* columns use 0.97\textwidth = 7.275 in
  *   In \textbf\small, chars per inch ≈ 10 → ~72 chars available on a heading line
  */
@@ -32,11 +32,12 @@ const MAX_LINES = 57;
 // Character budget for a single heading line (tabular* 0.97\textwidth)
 // Project heading: left cell + right cell share 0.97 * 540pt ≈ 524pt
 // At ~10 chars/in (\small, CMR), 7.275in → ~80 chars usable
-const HEADING_CHAR_BUDGET = 78;
+const HEADING_CHAR_BUDGET = 100;
 
-// Chars per line in body text (\small, full \textwidth)
-const BODY_CHARS_PER_LINE = 90;
-const BULLET_CHARS_PER_LINE = 88;
+// Chars per line in body text (\small, full \textwidth). Bullet text has
+// less usable room because of list indentation, so treat ~100 chars as one line.
+const BODY_CHARS_PER_LINE = 110;
+const BULLET_CHARS_PER_LINE = 100;
 
 // ─── Vertical space consumed by each element (in "line units") ──────────────
 

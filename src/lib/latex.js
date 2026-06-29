@@ -252,10 +252,10 @@ function generateProjects(projects) {
         ? escapeLatex(proj.technologies)
         : "";
 
-    // Check if name + technologies fit on one heading line (~78 chars)
+    // Check if name + technologies fit on one heading line (~100 chars)
     const nameLen = (proj.name || "").length;
     const techLen = (proj.technologies || "").length;
-    const fitsOnOneLine = nameLen + techLen <= 78;
+    const fitsOnOneLine = nameLen + techLen <= 100;
 
     if (fitsOnOneLine || !technologies) {
       // Single-line format: name left, technologies right
