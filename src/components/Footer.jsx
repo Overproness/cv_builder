@@ -1,40 +1,46 @@
-import Link from 'next/link';
-import { LuGithub, LuHeart, LuLinkedin, LuMail, LuTwitter } from 'react-icons/lu';
+import Link from "next/link";
+import {
+  LuGithub,
+  LuHeart,
+  LuLinkedin,
+  LuMail,
+  LuTwitter,
+} from "react-icons/lu";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
   const footerLinks = {
     product: [
-      { label: 'Master CV', href: '/cv' },
-      { label: 'Tailor Resume', href: '/tailor' },
-      { label: 'Templates', href: '#' },
-      { label: 'Pricing', href: '#' },
+      { label: "Master CV", href: "/cv" },
+      { label: "Tailor Resume", href: "/tailor" },
+      // { label: "Templates", href: "#" },
+      // { label: "Pricing", href: "#" },
     ],
     resources: [
-      { label: 'Blog', href: '#' },
-      { label: 'Resume Tips', href: '#' },
-      { label: 'Career Advice', href: '#' },
-      { label: 'FAQ', href: '#' },
+      { label: "Blog", href: "#" },
+      { label: "Resume Tips", href: "#" },
+      { label: "Career Advice", href: "#" },
+      { label: "FAQ", href: "#" },
     ],
     company: [
-      { label: 'About Us', href: '#' },
-      { label: 'Contact', href: '#' },
-      { label: 'Careers', href: '#' },
-      { label: 'Press', href: '#' },
+      { label: "About Us", href: "#" },
+      { label: "Contact", href: "#" },
+      { label: "Careers", href: "#" },
+      { label: "Press", href: "#" },
     ],
     legal: [
-      { label: 'Privacy Policy', href: '#' },
-      { label: 'Terms of Service', href: '#' },
-      { label: 'Cookie Policy', href: '#' },
+      { label: "Privacy Policy", href: "#" },
+      { label: "Terms of Service", href: "#" },
+      { label: "Cookie Policy", href: "#" },
     ],
   };
 
   const socialLinks = [
-    { icon: LuTwitter, href: '#', label: 'Twitter' },
-    { icon: LuGithub, href: '#', label: 'GitHub' },
-    { icon: LuLinkedin, href: '#', label: 'LinkedIn' },
-    { icon: LuMail, href: '#', label: 'Email' },
+    { icon: LuTwitter, href: "#", label: "Twitter" },
+    { icon: LuGithub, href: "#", label: "GitHub" },
+    { icon: LuLinkedin, href: "#", label: "LinkedIn" },
+    { icon: LuMail, href: "#", label: "Email" },
   ];
 
   return (
@@ -53,7 +59,7 @@ export function Footer() {
               Build job-winning resumes effortlessly with AI-powered tailoring.
             </p>
             {/* Social Links */}
-            <div className="mt-6 flex gap-4">
+            {/* <div className="mt-6 flex gap-4">
               {socialLinks.map((social) => (
                 <a
                   key={social.label}
@@ -64,7 +70,7 @@ export function Footer() {
                   <social.icon className="h-5 w-5" />
                 </a>
               ))}
-            </div>
+            </div> */}
           </div>
 
           {/* Product Links */}
@@ -85,7 +91,7 @@ export function Footer() {
           </div>
 
           {/* Resources Links */}
-          <div>
+          {/* <div>
             <h3 className="font-semibold text-foreground mb-4">Resources</h3>
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
@@ -99,10 +105,10 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
 
           {/* Company Links */}
-          <div>
+          {/* <div>
             <h3 className="font-semibold text-foreground mb-4">Company</h3>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
@@ -116,10 +122,10 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
 
           {/* Legal Links */}
-          <div>
+          {/* <div>
             <h3 className="font-semibold text-foreground mb-4">Legal</h3>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
@@ -133,7 +139,7 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -142,11 +148,11 @@ export function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground flex items-center gap-1">
-              © {currentYear} ResumeAI. Built with <LuHeart className="h-4 w-4 text-primary" /> and AI.
+              © {currentYear} ResumeAI. All rights reserved.
             </p>
-            <p className="text-sm text-muted-foreground">
+            {/* <p className="text-sm text-muted-foreground">
               Powered by Gemini 2.0
-            </p>
+            </p> */}
           </div>
         </div>
       </div>

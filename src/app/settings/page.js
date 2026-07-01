@@ -12,7 +12,9 @@ import {
   LuGauge,
   LuKey,
   LuLoader,
+  LuServer,
   LuSettings,
+  LuShieldCheck,
   LuUser,
   LuZap,
 } from "react-icons/lu";
@@ -32,12 +34,19 @@ export default function SettingsPage() {
   const [coverLetterEmail, setCoverLetterEmail] = useState("");
   const [coverLetterWordCount, setCoverLetterWordCount] = useState(250);
 
-  // API Key
+  // API Key — managed mode
+  const [apiKeyMode, setApiKeyMode] = useState("managed");
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [hasApiKey, setHasApiKey] = useState(false);
-  const [maskedApiKey, setMaskedApiKey] = useState("");
+  const [keyLast4, setKeyLast4] = useState("");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
+
+  // API Key — proxy mode
+  const [proxyUrl, setProxyUrl] = useState("");
+  const [proxySecret, setProxySecret] = useState("");
+  const [hasProxy, setHasProxy] = useState(false);
+  const [savingProxy, setSavingProxy] = useState(false);
 
   // Rate limiting
   const [rateLimitTier, setRateLimitTier] = useState("free");
@@ -65,8 +74,11 @@ export default function SettingsPage() {
         setCoverLetterWordCount(data.settings?.coverLetterWordCount || 250);
         setRateLimitTier(data.settings?.rateLimitTier || "free");
         setCustomRateLimit(data.settings?.customRateLimit || 15);
+        setApiKeyMode(data.apiKeyMode || "managed");
         setHasApiKey(data.hasApiKey || false);
-        setMaskedApiKey(data.maskedApiKey || "");
+        setKeyLast4(data.keyLast4 || "");
+        setHasProxy(data.hasProxy || false);
+        setProxyUrl(data.proxyUrl || "");
         setTokenUsage(data.tokenUsage || null);
       }
     } catch (err) {
@@ -109,6 +121,19 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSwitchMode = async (newMode) => {
+    setApiKeyMode(newMode);
+    try {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKeyMode: newMode }),
+      });
+    } catch {
+      // non-fatal; the visual switch is already applied
+    }
+  };
+
   const handleSaveApiKey = async () => {
     setSavingKey(true);
     try {
@@ -120,7 +145,7 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setHasApiKey(data.hasApiKey);
-        setMaskedApiKey(data.maskedApiKey || "");
+        setKeyLast4(data.keyLast4 || "");
         setGeminiApiKey("");
         setShowApiKeyInput(false);
         showMessage("API key saved!", "success");
@@ -145,7 +170,7 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         setHasApiKey(false);
-        setMaskedApiKey("");
+        setKeyLast4("");
         setGeminiApiKey("");
         showMessage("API key removed.", "success");
       }
@@ -153,6 +178,52 @@ export default function SettingsPage() {
       showMessage("Failed to remove API key", "error");
     } finally {
       setSavingKey(false);
+    }
+  };
+
+  const handleSaveProxy = async () => {
+    setSavingProxy(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proxyUrl, proxySecret }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHasProxy(data.hasProxy);
+        setProxyUrl(data.proxyUrl || "");
+        setProxySecret("");
+        showMessage("Proxy settings saved!", "success");
+      } else {
+        const d = await res.json();
+        showMessage(d.error || "Failed to save proxy settings", "error");
+      }
+    } catch {
+      showMessage("Failed to save proxy settings", "error");
+    } finally {
+      setSavingProxy(false);
+    }
+  };
+
+  const handleRemoveProxy = async () => {
+    setSavingProxy(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proxyUrl: "", proxySecret: "" }),
+      });
+      if (res.ok) {
+        setHasProxy(false);
+        setProxyUrl("");
+        setProxySecret("");
+        showMessage("Proxy removed.", "success");
+      }
+    } catch {
+      showMessage("Failed to remove proxy", "error");
+    } finally {
+      setSavingProxy(false);
     }
   };
 
@@ -260,70 +331,194 @@ export default function SettingsPage() {
                 </a>
               </p>
             </CardHeader>
-            <CardContent className="pt-0 flex flex-col gap-3">
-              {hasApiKey && !showApiKeyInput ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30 text-sm font-mono">
-                    <LuCheck className="h-4 w-4 text-green-500" />
-                    <span>{maskedApiKey}</span>
+            <CardContent className="pt-0 flex flex-col gap-4">
+              {/* Mode toggle */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchMode("managed")}
+                  className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors text-left ${
+                    apiKeyMode === "managed"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-transparent text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <LuShieldCheck className="h-3.5 w-3.5" />
+                    Managed Key
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowApiKeyInput(true)}
-                  >
-                    Change
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRemoveApiKey}
-                    disabled={savingKey}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <Input
-                      type="password"
-                      placeholder="Paste your Gemini API key (e.g. AIzaSy...)"
-                      value={geminiApiKey}
-                      onChange={(e) => setGeminiApiKey(e.target.value)}
-                      className="h-9 text-sm font-mono flex-1"
-                    />
-                    <Button
-                      onClick={handleSaveApiKey}
-                      disabled={savingKey || !geminiApiKey.trim()}
-                      size="sm"
-                    >
-                      {savingKey ? (
-                        <LuLoader className="animate-spin h-4 w-4" />
-                      ) : (
-                        "Save Key"
-                      )}
-                    </Button>
-                    {hasApiKey && (
+                  <div className="text-xs opacity-80 mt-0.5">
+                    We store your key, encrypted at rest
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchMode("proxy")}
+                  className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors text-left ${
+                    apiKeyMode === "proxy"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-transparent text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <LuServer className="h-3.5 w-3.5" />
+                    Self-hosted Proxy
+                  </div>
+                  <div className="text-xs opacity-80 mt-0.5">
+                    Your key never touches our servers
+                  </div>
+                </button>
+              </div>
+
+              {/* Managed mode panel */}
+              {apiKeyMode === "managed" && (
+                <div className="flex flex-col gap-3">
+                  {hasApiKey && !showApiKeyInput ? (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30 text-sm font-mono">
+                        <LuCheck className="h-4 w-4 text-green-500" />
+                        <span>Key ending in ···{keyLast4}</span>
+                      </div>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setShowApiKeyInput(false);
-                          setGeminiApiKey("");
-                        }}
+                        onClick={() => setShowApiKeyInput(true)}
                       >
-                        Cancel
+                        Change
                       </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Your key is encrypted and stored securely. It is only used
-                    to call Gemini on your behalf.
-                  </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveApiKey}
+                        disabled={savingKey}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          placeholder="Paste your Gemini API key (e.g. AIzaSy...)"
+                          value={geminiApiKey}
+                          onChange={(e) => setGeminiApiKey(e.target.value)}
+                          className="h-9 text-sm font-mono flex-1"
+                        />
+                        <Button
+                          onClick={handleSaveApiKey}
+                          disabled={savingKey || !geminiApiKey.trim()}
+                          size="sm"
+                        >
+                          {savingKey ? (
+                            <LuLoader className="animate-spin h-4 w-4" />
+                          ) : (
+                            "Save Key"
+                          )}
+                        </Button>
+                        {hasApiKey && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowApiKeyInput(false);
+                              setGeminiApiKey("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Proxy mode panel */}
+              {apiKeyMode === "proxy" && (
+                <div className="flex flex-col gap-3">
+                  {hasProxy ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30 text-sm">
+                        <LuCheck className="h-4 w-4 text-green-500 shrink-0" />
+                        <span className="font-mono truncate text-xs">{proxyUrl}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setHasProxy(false)}
+                        >
+                          Update
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveProxy}
+                          disabled={savingProxy}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div>
+                        <Label className="text-xs mb-1 block">Proxy URL</Label>
+                        <Input
+                          type="url"
+                          placeholder="https://my-worker.workers.dev"
+                          value={proxyUrl}
+                          onChange={(e) => setProxyUrl(e.target.value)}
+                          className="h-9 text-sm font-mono"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Proxy Secret</Label>
+                        <Input
+                          type="password"
+                          placeholder="The PROXY_SECRET set in your proxy deploy"
+                          value={proxySecret}
+                          onChange={(e) => setProxySecret(e.target.value)}
+                          className="h-9 text-sm font-mono"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleSaveProxy}
+                        disabled={savingProxy || !proxyUrl.trim() || !proxySecret.trim()}
+                        size="sm"
+                        className="w-fit"
+                      >
+                        {savingProxy ? (
+                          <LuLoader className="animate-spin h-4 w-4" />
+                        ) : (
+                          "Save Proxy"
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Trust note */}
+              <p className="text-xs text-muted-foreground rounded-lg bg-muted/40 border border-border px-3 py-2 leading-relaxed">
+                {apiKeyMode === "proxy" ? (
+                  <>
+                    <strong>Maximum privacy:</strong> in proxy mode your API key
+                    never touches our servers. Your proxy attaches it before
+                    calling Gemini.
+                  </>
+                ) : (
+                  <>
+                    <strong>Managed mode:</strong> your key is envelope-encrypted
+                    at rest (per-user key + master key) and decrypted only
+                    in memory during requests you initiate. Admins cannot view
+                    your key.
+                  </>
+                )}
+              </p>
             </CardContent>
           </Card>
 

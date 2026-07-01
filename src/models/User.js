@@ -32,7 +32,22 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please provide a password"],
     },
-    // Encrypted Gemini API key (user brings their own)
+    // API key mode: "managed" = envelope-encrypted key stored here,
+    //               "proxy"   = user's self-hosted proxy holds the real key
+    apiKeyMode: { type: String, enum: ["managed", "proxy"], default: "managed" },
+
+    // Managed mode — envelope encryption (per-user DEK + MASTER_KEY)
+    encryptedApiKey: { type: String, default: "" },
+    encryptedDek: { type: String, default: "" },
+    keyLast4: { type: String, default: "" },
+
+    // Proxy mode — encrypted proxy secret + URL
+    proxyUrl: { type: String, default: "" },
+    encryptedProxySecret: { type: String, default: "" },
+    encryptedProxySecretDek: { type: String, default: "" },
+
+    // Legacy: single-key AES encrypted with NEXTAUTH_SECRET derivative.
+    // Kept for zero-downtime migration; lazily re-encrypted on first use.
     geminiApiKey: { type: String, default: "" },
     // Cover letter / profile settings
     settings: {

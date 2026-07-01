@@ -2509,13 +2509,20 @@ function addSupplementalEntriesToTargetUsage(
  * exported function call the model index only advances — so all subsequent
  * calls (e.g. validation-loop retries) reuse the already-working fallback.
  */
-function createModelSelector(apiKey) {
-  if (!apiKey) {
+function createModelSelector(apiKeyOrProxy) {
+  if (!apiKeyOrProxy) {
     throw new Error(
       "Gemini API key is required. Please add your API key in Settings.",
     );
   }
-  const genAI = new GoogleGenerativeAI(apiKey);
+  // Proxy sentinel — route requests through user's self-hosted proxy
+  if (apiKeyOrProxy?.isProxy) {
+    return createProxyModelSelector(
+      apiKeyOrProxy.proxyUrl,
+      apiKeyOrProxy.proxySecret,
+    );
+  }
+  const genAI = new GoogleGenerativeAI(apiKeyOrProxy);
   let modelIndex = 0;
 
   return async function generate(request) {
@@ -2535,6 +2542,69 @@ function createModelSelector(apiKey) {
         }
         throw error;
       }
+    }
+  };
+}
+
+/**
+ * Proxy mode: sends the Gemini REST request to the user's self-hosted proxy.
+ * The proxy attaches the real API key and forwards to Google.
+ * Falls back through ALL_MODELS on 503, mirroring the SDK path.
+ *
+ * Expected proxy contract:
+ *   POST <proxyUrl>/v1beta/models/<model>:generateContent
+ *   Authorization: Bearer <proxySecret>
+ *   Content-Type: application/json
+ *   Body: Gemini generateContent request payload
+ *   Response: Gemini generateContent response JSON
+ */
+function createProxyModelSelector(proxyUrl, proxySecret) {
+  if (!proxyUrl || !proxySecret) {
+    throw new Error(
+      "Proxy URL and secret are required. Please configure your proxy in Settings.",
+    );
+  }
+  let modelIndex = 0;
+
+  return async function generate(request) {
+    while (modelIndex < ALL_MODELS.length) {
+      const model = ALL_MODELS[modelIndex];
+      const url = `${proxyUrl.replace(/\/$/, "")}/v1beta/models/${model}:generateContent`;
+      let res;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${proxySecret}`,
+          },
+          body: JSON.stringify(request),
+        });
+      } catch (networkError) {
+        throw new Error(
+          `Could not reach your proxy at ${proxyUrl}. Check the URL in Settings.`,
+        );
+      }
+      if (res.status === 503 && modelIndex < ALL_MODELS.length - 1) {
+        console.warn(
+          `Proxy: model ${model} unavailable (503), switching to ${ALL_MODELS[modelIndex + 1]}...`,
+        );
+        modelIndex++;
+        continue;
+      }
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Proxy returned ${res.status}: ${body}`);
+      }
+      // Wrap raw REST JSON to match the shape the SDK returns:
+      // SDK returns an object with .response.text() method
+      const json = await res.json();
+      return {
+        response: {
+          text: () => json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "",
+          usageMetadata: json?.usageMetadata,
+        },
+      };
     }
   };
 }
