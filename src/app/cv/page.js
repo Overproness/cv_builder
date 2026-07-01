@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ANALYTICS_EVENTS, trackEvent } from "@/lib/analytics";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -163,6 +164,7 @@ export default function CVPage() {
     }
 
     setLoading(true);
+    trackEvent(ANALYTICS_EVENTS.CV_PARSE_STARTED);
     try {
       const res = await fetch("/api/cv/parse", {
         method: "POST",
@@ -176,11 +178,14 @@ export default function CVPage() {
         setCV(data.cv);
         setMode("structured");
         showMessage("CV parsed successfully!", "success");
+        trackEvent(ANALYTICS_EVENTS.CV_PARSE_COMPLETED);
       } else {
         showMessage(data.error || "Failed to parse CV", "error");
+        trackEvent(ANALYTICS_EVENTS.CV_PARSE_FAILED, { error: data.error });
       }
     } catch (error) {
       showMessage("Failed to parse CV. Please try again.", "error");
+      trackEvent(ANALYTICS_EVENTS.CV_PARSE_FAILED, { error: error.message });
     } finally {
       setLoading(false);
     }
@@ -249,6 +254,7 @@ export default function CVPage() {
           if (summaryRes.ok) setAllCVs(await summaryRes.json());
         }
         showMessage("CV saved successfully!", "success");
+        trackEvent(ANALYTICS_EVENTS.MASTER_CV_SAVED);
       } else {
         showMessage(data.error || "Failed to save CV", "error");
       }

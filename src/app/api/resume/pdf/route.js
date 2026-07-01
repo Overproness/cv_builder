@@ -1,3 +1,4 @@
+import { logServerError } from "@/lib/serverLogger";
 import { NextResponse } from "next/server";
 
 // POST - Compile LaTeX to PDF using latex_server
@@ -56,7 +57,9 @@ export async function POST(request) {
       const error = await response
         .json()
         .catch(() => ({ error: "Unknown server error" }));
-      console.error("❌ Compilation failed:", error);
+      logServerError("❌ Compilation failed:", new Error(error.error || `Compilation failed: ${response.status}`), {
+        event: "pdf_compile_failed",
+      });
       return NextResponse.json(
         { error: error.error || `Compilation failed: ${response.status}` },
         { status: response.status },
@@ -75,7 +78,7 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("Error in PDF route:", error);
+    logServerError("Error in PDF route:", error, { event: "pdf_compile_failed" });
     return NextResponse.json(
       { error: error.message || "Failed to compile LaTeX to PDF" },
       { status: 500 },

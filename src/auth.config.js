@@ -18,6 +18,15 @@ export const authConfig = {
       // Allow access to auth API routes and public pages
       if (nextUrl.pathname.startsWith("/api/auth")) return true;
 
+      // /admin is gated on role, not just being logged in. Role is already
+      // embedded in the JWT at login, so this is a free check with no DB call.
+      if (
+        nextUrl.pathname.startsWith("/admin") ||
+        nextUrl.pathname.startsWith("/api/admin")
+      ) {
+        return auth?.user?.role === "admin";
+      }
+
       if (isProtected) {
         if (isLoggedIn) return true;
         return false; // Redirect unauthenticated users to login page
@@ -34,6 +43,7 @@ export const authConfig = {
         // Ensure id is always a string, not a buffer or ObjectId
         session.user.id = String(token.sub);
       }
+      session.user.role = token?.role || "user";
       return session;
     },
     async jwt({ token, user }) {
@@ -57,6 +67,7 @@ export const authConfig = {
           userId,
         );
         token.sub = userId;
+        token.role = user.role || "user";
       }
       return token;
     },

@@ -102,8 +102,8 @@ export default function AboutUsPage() {
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               We believe a resume is more than a document — it&apos;s the
-              architecture of your career. ResumeAI blends AI with deep
-              industry expertise to build pathways to success.
+              architecture of your career. ResumeAI blends AI with deep industry
+              expertise to build pathways to success.
             </p>
           </div>
         </section>
@@ -191,7 +191,7 @@ export default function AboutUsPage() {
         </section>
 
         {/* Team Section */}
-        <section className="py-20">
+        {/* <section className="py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-4">
@@ -223,10 +223,10 @@ export default function AboutUsPage() {
               ))}
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* Trust Strip */}
-        <section className="pb-24">
+        <section className="py-24">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-gradient-to-br from-primary/10 via-transparent to-accent/10 rounded-3xl p-10 border border-border flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">

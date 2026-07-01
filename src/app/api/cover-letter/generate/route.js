@@ -1,4 +1,5 @@
 import { generateCoverLetter } from "@/lib/gemini";
+import { logServerError } from "@/lib/serverLogger";
 import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
@@ -56,7 +57,10 @@ export async function POST(request) {
       tokenUsage,
     });
   } catch (error) {
-    console.error("Error generating cover letter:", error);
+    logServerError("Error generating cover letter:", error, {
+      event: "cover_letter_generate_failed",
+      userId,
+    });
     return NextResponse.json(
       { error: error.message || "Failed to generate cover letter" },
       { status: 500 },

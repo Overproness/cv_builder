@@ -1,4 +1,5 @@
 import { editCVWithAI } from "@/lib/gemini";
+import { logServerError } from "@/lib/serverLogger";
 import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
@@ -52,7 +53,10 @@ export async function POST(request) {
       tokenUsage,
     });
   } catch (error) {
-    console.error("Error editing CV with AI:", error);
+    logServerError("Error editing CV with AI:", error, {
+      event: "cv_edit_failed",
+      userId,
+    });
     return NextResponse.json(
       { error: error.message || "Failed to edit CV" },
       { status: 500 },

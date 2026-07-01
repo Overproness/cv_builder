@@ -1,4 +1,5 @@
 import { parseRawTextToCV } from "@/lib/gemini";
+import { logServerError } from "@/lib/serverLogger";
 import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
@@ -44,7 +45,10 @@ export async function POST(request) {
       tokenUsage,
     });
   } catch (error) {
-    console.error("Error parsing CV:", error);
+    logServerError("Error parsing CV:", error, {
+      event: "cv_parse_failed",
+      userId,
+    });
     return NextResponse.json(
       { error: error.message || "Failed to parse CV" },
       { status: 500 },

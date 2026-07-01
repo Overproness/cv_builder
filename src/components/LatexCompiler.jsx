@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { ANALYTICS_EVENTS, trackEvent } from "@/lib/analytics";
 
 /**
  * LaTeX compiler hook
@@ -94,6 +95,7 @@ export default function LatexCompiler({
 
     setIsCompiling(true);
     setCompilationLog("");
+    trackEvent(ANALYTICS_EVENTS.PDF_COMPILE_STARTED);
 
     try {
       const result = await compileLatex(latexSource);
@@ -101,13 +103,16 @@ export default function LatexCompiler({
       if (result.success) {
         setCompilationLog(result.log);
         onCompileSuccess?.(result.pdf, result.log);
+        trackEvent(ANALYTICS_EVENTS.PDF_COMPILE_SUCCEEDED);
       } else {
         setCompilationLog(result.log);
         onCompileError?.(new Error("Compilation failed"), result.log);
+        trackEvent(ANALYTICS_EVENTS.PDF_COMPILE_FAILED);
       }
     } catch (err) {
       setCompilationLog(err.message);
       onCompileError?.(err, err.message);
+      trackEvent(ANALYTICS_EVENTS.PDF_COMPILE_FAILED, { error: err.message });
     } finally {
       setIsCompiling(false);
     }

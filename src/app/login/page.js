@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ANALYTICS_EVENTS, trackEvent } from "@/lib/analytics";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -45,6 +46,7 @@ export default function LoginPage() {
     if (result?.error) {
       setErrorMessage("Invalid credentials.");
     } else {
+      trackEvent(ANALYTICS_EVENTS.LOGIN_COMPLETED);
       router.push("/");
       router.refresh();
     }

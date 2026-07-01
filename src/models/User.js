@@ -32,6 +32,7 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please provide a password"],
     },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
     // API key mode: "managed" = envelope-encrypted key stored here,
     //               "proxy"   = user's self-hosted proxy holds the real key
     apiKeyMode: { type: String, enum: ["managed", "proxy"], default: "managed" },

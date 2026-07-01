@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ANALYTICS_EVENTS, trackEvent } from "@/lib/analytics";
 import {
   assembleCoverLetter,
   downloadCoverLetterAsDocx,
@@ -216,6 +217,8 @@ export default function TailorPage() {
     setTokenUsage(null);
     setPageEstimate(null);
 
+    trackEvent(ANALYTICS_EVENTS.TAILOR_STARTED, { genResume, genCoverLetter });
+
     try {
       const requestFns = [];
 
@@ -340,11 +343,15 @@ export default function TailorPage() {
                 result.data.tokenUsage.totalTokens || 0;
               aggregatedTokens.cost += result.data.tokenUsage.cost || 0;
             }
+            trackEvent(ANALYTICS_EVENTS.TAILOR_COMPLETED);
           } else {
             showMessage(
               result.data.error || "Failed to tailor resume",
               "error",
             );
+            trackEvent(ANALYTICS_EVENTS.TAILOR_FAILED, {
+              error: result.data.error,
+            });
           }
         } else if (result.type === "cl") {
           if (result.ok && result.data.content) {
@@ -372,11 +379,15 @@ export default function TailorPage() {
                 result.data.tokenUsage.totalTokens || 0;
               aggregatedTokens.cost += result.data.tokenUsage.cost || 0;
             }
+            trackEvent(ANALYTICS_EVENTS.COVER_LETTER_GENERATED);
           } else {
             showMessage(
               result.data.error || "Failed to generate cover letter",
               "error",
             );
+            trackEvent(ANALYTICS_EVENTS.COVER_LETTER_GENERATE_FAILED, {
+              error: result.data.error,
+            });
           }
         } else if (result.type === "qa") {
           if (result.ok && result.data.answers) {
@@ -412,6 +423,11 @@ export default function TailorPage() {
       }
     } catch (error) {
       showMessage("Failed to generate. Please try again.", "error");
+      if (genResume) trackEvent(ANALYTICS_EVENTS.TAILOR_FAILED, { error: error.message });
+      if (genCoverLetter)
+        trackEvent(ANALYTICS_EVENTS.COVER_LETTER_GENERATE_FAILED, {
+          error: error.message,
+        });
     } finally {
       setLoading(false);
     }
@@ -528,6 +544,7 @@ export default function TailorPage() {
       if (res.ok) {
         setSavedGroupId(data.id);
         showMessage("Everything saved and linked!", "success");
+        trackEvent(ANALYTICS_EVENTS.APPLICATION_GROUP_CREATED);
       } else {
         showMessage(data.error || "Failed to save application group", "error");
       }

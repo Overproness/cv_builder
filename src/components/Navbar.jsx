@@ -6,7 +6,7 @@ import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LuMenu, LuSettings, LuX } from "react-icons/lu";
+import { LuMenu, LuSettings, LuShieldCheck, LuX } from "react-icons/lu";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -54,6 +54,13 @@ export function Navbar() {
               <div className="h-10 w-24 animate-pulse bg-muted rounded-lg" />
             ) : session ? (
               <>
+                {session.user?.role === "admin" && (
+                  <Link href="/admin" title="Admin">
+                    <Button variant="ghost" size="icon">
+                      <LuShieldCheck className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                )}
                 <Link href="/settings" title="Settings">
                   <Button variant="ghost" size="icon">
                     <LuSettings className="h-4 w-4" />
@@ -120,6 +127,20 @@ export function Navbar() {
                   <div className="h-10 animate-pulse bg-muted rounded-lg" />
                 ) : session ? (
                   <>
+                    {session.user?.role === "admin" && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start gap-2"
+                        >
+                          <LuShieldCheck className="h-4 w-4" />
+                          Admin
+                        </Button>
+                      </Link>
+                    )}
                     <Link
                       href="/settings"
                       onClick={() => setMobileMenuOpen(false)}

@@ -20,8 +20,8 @@ const tocItems = [
   { id: "data-collection", label: "Data Collection" },
   { id: "usage", label: "Usage" },
   { id: "security", label: "Security" },
-  { id: "cookies", label: "Cookies" },
-  { id: "contact", label: "Contact Us" },
+  // { id: "cookies", label: "Cookies" },
+  // { id: "contact", label: "Contact Us" },
 ];
 
 export default function PrivacyPolicyPage() {
@@ -50,11 +50,11 @@ export default function PrivacyPolicyPage() {
           <article className="md:col-span-8 lg:col-span-9 bg-card rounded-xl border border-border p-6 md:p-10">
             <section id="introduction" className="mb-10 scroll-mt-24">
               <p className="text-muted-foreground leading-relaxed">
-                Welcome to ResumeAI&apos;s Privacy Policy. We respect your privacy
-                and are committed to protecting your personal data. This
+                Welcome to ResumeAI&apos;s Privacy Policy. We respect your
+                privacy and are committed to protecting your personal data. This
                 policy explains how we look after your personal data when you
-                use our website and tells you about your privacy rights and
-                how the law protects you.
+                use our website and tells you about your privacy rights and how
+                the law protects you.
               </p>
             </section>
 
@@ -77,13 +77,10 @@ export default function PrivacyPolicyPage() {
                 </li>
                 <li>
                   <strong className="text-foreground">Contact Data</strong>{" "}
-                  includes your email address and any phone number you
-                  provide.
+                  includes your email address and any phone number you provide.
                 </li>
                 <li>
-                  <strong className="text-foreground">
-                    Professional Data
-                  </strong>{" "}
+                  <strong className="text-foreground">Professional Data</strong>{" "}
                   includes your employment history, educational background,
                   skills, and any other information you provide when using our
                   resume building tools.
@@ -111,9 +108,8 @@ export default function PrivacyPolicyPage() {
                   <li className="flex items-start gap-2">
                     <LuCircleCheck className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                     <span>
-                      Where we need to perform the contract we have entered
-                      into with you (e.g., providing the resume generation
-                      service).
+                      Where we need to perform the contract we have entered into
+                      with you (e.g., providing the resume generation service).
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
@@ -126,7 +122,9 @@ export default function PrivacyPolicyPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <LuCircleCheck className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span>Where we need to comply with a legal obligation.</span>
+                    <span>
+                      Where we need to comply with a legal obligation.
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -140,9 +138,9 @@ export default function PrivacyPolicyPage() {
               <p className="text-muted-foreground leading-relaxed mb-4">
                 We have put in place appropriate security measures to prevent
                 your personal data from being accidentally lost, used, or
-                accessed in an unauthorized way, altered, or disclosed. We
-                limit access to your personal data to those who have a
-                genuine business need to know it.
+                accessed in an unauthorized way, altered, or disclosed. We limit
+                access to your personal data to those who have a genuine
+                business need to know it.
               </p>
               <p className="text-muted-foreground leading-relaxed">
                 We have put in place procedures to deal with any suspected
@@ -151,7 +149,7 @@ export default function PrivacyPolicyPage() {
               </p>
             </section>
 
-            <section id="cookies" className="mb-10 scroll-mt-24">
+            {/* <section id="cookies" className="mb-10 scroll-mt-24">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <LuCookie className="h-5 w-5 text-primary" />
                 Cookies
@@ -206,9 +204,9 @@ export default function PrivacyPolicyPage() {
                   </tbody>
                 </table>
               </div>
-            </section>
+            </section> */}
 
-            <section
+            {/* <section
               id="contact"
               className="scroll-mt-24 bg-background p-6 rounded-lg border border-border"
             >
@@ -223,7 +221,7 @@ export default function PrivacyPolicyPage() {
               >
                 Contact Privacy Team
               </a>
-            </section>
+            </section> */}
           </article>
         </div>
       </main>

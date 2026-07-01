@@ -7,6 +7,7 @@ import PdfPreview from "@/components/PdfPreview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ANALYTICS_EVENTS, trackEvent } from "@/lib/analytics";
 import {
   downloadCoverLetterAsDocx,
   printCoverLetterAsPdf,
@@ -231,6 +232,7 @@ export default function DocumentsPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    trackEvent(ANALYTICS_EVENTS.RESUME_DOWNLOADED, { format: "pdf" });
   };
 
   const downloadTeX = (resume) => {
@@ -241,6 +243,7 @@ export default function DocumentsPage() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    trackEvent(ANALYTICS_EVENTS.RESUME_DOWNLOADED, { format: "tex" });
   };
 
   const saveResumeEdits = async () => {
@@ -681,12 +684,15 @@ export default function DocumentsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() =>
+                    onClick={() => {
                       downloadCoverLetterAsDocx(
                         editedCLContent,
                         viewingCL.title || "cover-letter",
-                      )
-                    }
+                      );
+                      trackEvent(ANALYTICS_EVENTS.COVER_LETTER_DOWNLOADED, {
+                        format: "docx",
+                      });
+                    }}
                   >
                     <LuDownload className="h-4 w-4 mr-1" /> DOCX
                   </Button>
@@ -1224,12 +1230,15 @@ export default function DocumentsPage() {
                   date={cl.createdAt}
                   formatDate={formatDate}
                   onView={() => openCoverLetter(cl)}
-                  onDownload={() =>
+                  onDownload={() => {
                     downloadCoverLetterAsDocx(
                       cl.content,
                       cl.title || "cover-letter",
-                    )
-                  }
+                    );
+                    trackEvent(ANALYTICS_EVENTS.COVER_LETTER_DOWNLOADED, {
+                      format: "docx",
+                    });
+                  }}
                   onDelete={() => deleteCoverLetter(cl._id)}
                   viewLabel="View & Edit"
                   downloadLabel="DOCX"

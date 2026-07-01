@@ -14,13 +14,14 @@ export function Footer() {
     product: [
       { label: "Master CV", href: "/cv" },
       { label: "Tailor Resume", href: "/tailor" },
+      { label: "Documents", href: "/documents" },
       // { label: "Templates", href: "#" },
       // { label: "Pricing", href: "#" },
     ],
     resources: [{ label: "Resume Tips", href: "/resume-tips" }],
     company: [
       { label: "About Us", href: "/about-us" },
-      { label: "Contact", href: "/contact" },
+      // { label: "Contact", href: "/contact" },
     ],
     legal: [
       { label: "Privacy Policy", href: "/privacy-policy" },

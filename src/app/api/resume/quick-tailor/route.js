@@ -1,5 +1,6 @@
 import { quickTailorKeywords } from "@/lib/gemini";
 import { generateLatex } from "@/lib/latex";
+import { logServerError } from "@/lib/serverLogger";
 import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
@@ -57,7 +58,10 @@ export async function POST(request) {
       tokenUsage,
     });
   } catch (error) {
-    console.error("Error quick-tailoring resume:", error);
+    logServerError("Error quick-tailoring resume:", error, {
+      event: "tailor_failed",
+      userId,
+    });
     return NextResponse.json(
       { error: error.message || "Failed to quick-tailor resume" },
       { status: 500 },

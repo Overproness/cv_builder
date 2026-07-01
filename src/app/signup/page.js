@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ANALYTICS_EVENTS, trackEvent } from "@/lib/analytics";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -59,6 +60,8 @@ export default function SignUpPage() {
       if (!res.ok) {
         throw new Error(data.message || "Something went wrong");
       }
+
+      trackEvent(ANALYTICS_EVENTS.SIGNUP_COMPLETED);
 
       // Auto sign-in after registration, then redirect to settings for onboarding
       const { signIn } = await import("next-auth/react");
