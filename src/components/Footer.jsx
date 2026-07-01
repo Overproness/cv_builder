@@ -17,22 +17,14 @@ export function Footer() {
       // { label: "Templates", href: "#" },
       // { label: "Pricing", href: "#" },
     ],
-    resources: [
-      { label: "Blog", href: "#" },
-      { label: "Resume Tips", href: "#" },
-      { label: "Career Advice", href: "#" },
-      { label: "FAQ", href: "#" },
-    ],
+    resources: [{ label: "Resume Tips", href: "/resume-tips" }],
     company: [
-      { label: "About Us", href: "#" },
-      { label: "Contact", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Press", href: "#" },
+      { label: "About Us", href: "/about-us" },
+      { label: "Contact", href: "/contact" },
     ],
     legal: [
-      { label: "Privacy Policy", href: "#" },
-      { label: "Terms of Service", href: "#" },
-      { label: "Cookie Policy", href: "#" },
+      { label: "Privacy Policy", href: "/privacy-policy" },
+      { label: "Terms and Conditions", href: "/terms-and-conditions" },
     ],
   };
 
@@ -91,7 +83,7 @@ export function Footer() {
           </div>
 
           {/* Resources Links */}
-          {/* <div>
+          <div>
             <h3 className="font-semibold text-foreground mb-4">Resources</h3>
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
@@ -105,10 +97,10 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div> */}
+          </div>
 
           {/* Company Links */}
-          {/* <div>
+          <div>
             <h3 className="font-semibold text-foreground mb-4">Company</h3>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
@@ -122,10 +114,10 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div> */}
+          </div>
 
           {/* Legal Links */}
-          {/* <div>
+          <div>
             <h3 className="font-semibold text-foreground mb-4">Legal</h3>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
@@ -139,7 +131,7 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </div> */}
+          </div>
         </div>
       </div>
 

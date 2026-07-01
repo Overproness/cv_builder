@@ -1178,7 +1178,35 @@ function getTagAlignmentScore(entry, targetRelevanceText = "") {
   return Math.min(TAG_ALIGNMENT_SCORE_CAP, score);
 }
 
+function getExactTargetTagMatchScore(entry, targetRelevanceText = "") {
+  const targetText = normalizeSourceText(targetRelevanceText);
+  if (!targetText) return 0;
+
+  const paddedTargetText = ` ${targetText} `;
+  const compactTargetText = targetText.replace(/\s+/g, "");
+  let score = 0;
+
+  for (const tag of normalizeTags(entry?.tags)) {
+    const tagText = normalizeSourceText(tag);
+    const compactTagText = tagText.replace(/\s+/g, "");
+    if (!tagText || !compactTagText) continue;
+
+    if (
+      paddedTargetText.includes(` ${tagText} `) ||
+      compactTargetText.includes(compactTagText)
+    ) {
+      score += tagText.includes(" ") ? 3 : 1;
+    }
+  }
+
+  return score;
+}
+
 function compareHybridCandidates(a, b) {
+  const exactTagDifference =
+    (b.exactTagMatchScore || 0) - (a.exactTagMatchScore || 0);
+  if (exactTagDifference !== 0) return exactTagDifference;
+
   if (a.score !== b.score) return b.score - a.score;
 
   const domainDifference = (b.domainFitScore || 0) - (a.domainFitScore || 0);
@@ -1262,6 +1290,9 @@ function getDateRankValue(value) {
 }
 
 function compareRankedEntries(a, b) {
+  const exactTagDifference =
+    (b.exactTagMatchScore || 0) - (a.exactTagMatchScore || 0);
+  if (exactTagDifference !== 0) return exactTagDifference;
   if (a.score !== b.score) return b.score - a.score;
   if (a.important !== b.important) return Number(b.important) - Number(a.important);
   if (a.recency !== b.recency) return b.recency - a.recency;
@@ -1280,6 +1311,10 @@ function rankEntriesForJob(entries = [], jobProfile, options = {}) {
         important: Boolean(entry.important),
         recency: getDateRankValue(entry.dates || entry.date),
         domainFitScore,
+        exactTagMatchScore: getExactTargetTagMatchScore(
+          entry,
+          jobProfile.targetText,
+        ),
         score: scoreEntryForJob(entry, jobProfile, sectionName) + scoreAdjustment,
       };
     })
@@ -1500,6 +1535,10 @@ function selectHybridRankedEntries({
     const fallback = fallbackByIndex.get(index);
     const baseScore = clampAIScore(item.score, fallback?.score || 0);
     const tagAlignmentScore = getTagAlignmentScore(entry, targetRelevanceText);
+    const exactTagMatchScore = getExactTargetTagMatchScore(
+      entry,
+      targetRelevanceText,
+    );
     const domainFitScore = fallback?.domainFitScore || 0;
     const deterministicSignal = Math.round((fallback?.score || 0) / 6);
     selectedIndexes.add(index);
@@ -1516,6 +1555,7 @@ function selectHybridRankedEntries({
       ),
       baseScore,
       tagAlignmentScore,
+      exactTagMatchScore,
       domainFitScore,
       aiRank: rank + 1,
       reason: String(item.reason || "").trim(),
@@ -1530,6 +1570,10 @@ function selectHybridRankedEntries({
       fallback.entry,
       targetRelevanceText,
     );
+    const exactTagMatchScore = getExactTargetTagMatchScore(
+      fallback.entry,
+      targetRelevanceText,
+    );
     selectedIndexes.add(fallback.index);
     candidates.push({
       ...fallback,
@@ -1539,6 +1583,7 @@ function selectHybridRankedEntries({
       ),
       baseScore: fallback.score,
       tagAlignmentScore,
+      exactTagMatchScore,
       domainFitScore: fallback.domainFitScore || 0,
       aiRank: Number.MAX_SAFE_INTEGER,
       reason: "Fallback relevance score filled this slot.",
@@ -2688,6 +2733,7 @@ function normalizeTagValue(tag) {
   return String(tag || "")
     .toLowerCase()
     .trim()
+    .replace(/[_]+/g, " ")
     .replace(/[^a-z0-9+#./\s-]+/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
