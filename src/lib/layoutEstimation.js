@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LaTeX Resume Layout Estimation
  *
  * Estimates whether resume content will fit on a single letter-paper page
@@ -25,9 +25,13 @@
 const PAGE_HEIGHT_PT = 684; // usable textheight in pt
 const BASELINE_SKIP = 13.6; // pt, for 11pt body
 const SMALL_BASELINE = 12.0; // pt, for \small (10pt)
-// Empirically calibrated for Jake's dense resume template, where negative
-// vspace and \small text fit more visual rows than a plain 11pt baseline grid.
-const MAX_LINES = 57;
+// Keep a stricter safe-fit guard for adding whole entries, while allowing the
+// final polish pass to use the visual page cap for small third-bullet additions.
+const FIT_MAX_LINES = 52;
+const VISUAL_MAX_LINES = 54;
+const PHYSICAL_MAX_LINES = VISUAL_MAX_LINES;
+const PAGE_FIT_BUFFER_LINES = 0;
+const MAX_LINES = VISUAL_MAX_LINES;
 
 // Character budget for a single heading line (tabular* 0.97\textwidth)
 // Project heading: left cell + right cell share 0.97 * 540pt ≈ 524pt
@@ -238,14 +242,23 @@ export function estimatePageUsage(cvData) {
     totalLines: Math.round(visibleTotal * 10) / 10,
     visibleLines: Math.round(visibleTotal * 10) / 10,
     layoutLines: Math.round(layoutTotal * 10) / 10,
-    maxLines: MAX_LINES,
-    fits: layoutTotal <= MAX_LINES,
+    maxLines: VISUAL_MAX_LINES,
+    visualMaxLines: VISUAL_MAX_LINES,
+    fitMaxLines: FIT_MAX_LINES,
+    physicalMaxLines: PHYSICAL_MAX_LINES,
+    safeFits: layoutTotal <= FIT_MAX_LINES,
+    fits: layoutTotal <= VISUAL_MAX_LINES,
     overflow:
-      layoutTotal > MAX_LINES
-        ? Math.round((layoutTotal - MAX_LINES) * 10) / 10
+      layoutTotal > VISUAL_MAX_LINES
+        ? Math.round((layoutTotal - VISUAL_MAX_LINES) * 10) / 10
         : 0,
-    usagePercent: Math.round((visibleTotal / MAX_LINES) * 100),
-    layoutUsagePercent: Math.round((layoutTotal / MAX_LINES) * 100),
+    safeOverflow:
+      layoutTotal > FIT_MAX_LINES
+        ? Math.round((layoutTotal - FIT_MAX_LINES) * 10) / 10
+        : 0,
+    usagePercent: Math.round((visibleTotal / VISUAL_MAX_LINES) * 100),
+    layoutUsagePercent: Math.round((layoutTotal / VISUAL_MAX_LINES) * 100),
+    fitUsagePercent: Math.round((layoutTotal / FIT_MAX_LINES) * 100),
     breakdown,
   };
 }

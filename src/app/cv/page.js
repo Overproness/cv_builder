@@ -484,6 +484,7 @@ export default function CVPage() {
           organization: "",
           date: "",
           link: "",
+          tags: [],
         },
         ...(prev.additional_qualifications || []),
       ],
@@ -498,6 +499,14 @@ export default function CVPage() {
           i === index ? { ...qualification, [field]: value } : qualification,
       ),
     }));
+  };
+
+  const updateQualificationTags = (index, value) => {
+    const tags = value
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s);
+    updateQualification(index, "tags", tags);
   };
 
   const removeQualification = (index) => {
@@ -1563,6 +1572,17 @@ Software Engineer at Google (2020-Present)
                             className="md:col-span-2"
                             placeholder="Credential, publication, or award link (Optional)"
                           />
+                          <div className="md:col-span-2 relative">
+                            <LuTag className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              value={(qualification.tags || []).join(", ")}
+                              onChange={(e) =>
+                                updateQualificationTags(index, e.target.value)
+                              }
+                              className="pl-9 text-sm"
+                              placeholder="AI tags: certification, data-science, aws (comma-separated)"
+                            />
+                          </div>
                         </div>
                       </div>
                     ),

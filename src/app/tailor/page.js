@@ -1227,13 +1227,13 @@ export default function TailorPage() {
                                 <div
                                   className={`h-full rounded-full transition-all ${pageEstimate.fits ? "bg-green-500" : "bg-red-500"}`}
                                   style={{
-                                    width: `${Math.min(100, pageEstimate.usagePercent)}%`,
+                                    width: `${Math.min(100, pageEstimate.layoutUsagePercent ?? pageEstimate.usagePercent)}%`,
                                   }}
                                 />
                               </div>
                               <span>
-                                ~{pageEstimate.usagePercent}% page used (
-                                {pageEstimate.totalLines}/
+                                ~{pageEstimate.layoutUsagePercent ?? pageEstimate.usagePercent}% page used (
+                                {pageEstimate.layoutLines ?? pageEstimate.totalLines}/
                                 {pageEstimate.maxLines} lines)
                                 {!pageEstimate.fits &&
                                   ` — ${pageEstimate.overflow} lines over`}
