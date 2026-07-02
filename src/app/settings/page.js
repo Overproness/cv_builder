@@ -11,10 +11,12 @@ import {
   LuCheck,
   LuGauge,
   LuKey,
+  LuLaptop,
   LuLoader,
   LuServer,
   LuSettings,
   LuShieldCheck,
+  LuTrash2,
   LuUser,
   LuZap,
 } from "react-icons/lu";
@@ -55,9 +57,65 @@ export default function SettingsPage() {
   // Token usage
   const [tokenUsage, setTokenUsage] = useState(null);
 
+  // Connected extension devices
+  const [extensionSessions, setExtensionSessions] = useState([]);
+  const [loadingExtensionSessions, setLoadingExtensionSessions] = useState(true);
+  const [revokingSessionId, setRevokingSessionId] = useState(null);
+
   useEffect(() => {
     fetchSettings();
+    fetchExtensionSessions();
   }, []);
+
+  const fetchExtensionSessions = async () => {
+    try {
+      const res = await fetch("/api/extension/sessions");
+      if (res.ok) {
+        const data = await res.json();
+        setExtensionSessions(data.sessions || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingExtensionSessions(false);
+    }
+  };
+
+  const handleRevokeSession = async (id) => {
+    setRevokingSessionId(id);
+    try {
+      const res = await fetch(`/api/extension/sessions/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setExtensionSessions((prev) => prev.filter((s) => s.id !== id));
+        showMessage("Extension access revoked.", "success");
+      } else {
+        showMessage("Failed to revoke access", "error");
+      }
+    } catch {
+      showMessage("Failed to revoke access", "error");
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
+
+  const formatRelativeTime = (dateStr) => {
+    if (!dateStr) return "";
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   const fetchSettings = async () => {
     try {
@@ -728,6 +786,69 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">
                   No usage data yet. Start generating to see your token usage.
                 </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Connected Devices — Chrome extension access */}
+          <Card className="mb-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <LuLaptop className="h-4 w-4 text-primary" />
+                Connected Devices
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Browsers and devices signed in to the CV Builder Chrome
+                extension. Revoking access takes effect the next time
+                that device refreshes its session (usually within 15
+                minutes).
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {loadingExtensionSessions ? (
+                <div className="flex items-center justify-center py-4">
+                  <LuLoader className="animate-spin text-muted-foreground h-4 w-4" />
+                </div>
+              ) : extensionSessions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No devices connected yet. Install the CV Builder extension
+                  and sign in to get started.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {extensionSessions.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex items-center justify-between gap-3 px-3 py-2 rounded-md border border-border bg-muted/30"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {s.deviceLabel || "Chrome Extension"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Last used {formatRelativeTime(s.lastUsedAt)} ·
+                          Connected {formatRelativeTime(s.createdAt)}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevokeSession(s.id)}
+                        disabled={revokingSessionId === s.id}
+                        className="text-destructive hover:text-destructive shrink-0"
+                      >
+                        {revokingSessionId === s.id ? (
+                          <LuLoader className="animate-spin h-4 w-4" />
+                        ) : (
+                          <>
+                            <LuTrash2 className="h-3.5 w-3.5 mr-1" />
+                            Revoke
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

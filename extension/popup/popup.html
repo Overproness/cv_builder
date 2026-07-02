@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CV Builder</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="header">
+        <div class="brand">
+          <img src="../icons/48.png" alt="" class="brand-icon" />
+          <span class="brand-name">CV Builder</span>
+        </div>
+        <div id="account-area" class="account-area"></div>
+      </header>
+
+      <!-- Logged-out state -->
+      <section id="logged-out-view" class="view hidden">
+        <p class="muted">
+          Sign in to generate tailored resumes and cover letters straight
+          from job postings.
+        </p>
+        <button id="login-btn" class="btn btn-primary btn-block">
+          Log in to CV Builder
+        </button>
+        <p id="login-error" class="error-text hidden"></p>
+      </section>
+
+      <!-- Logged-in state -->
+      <section id="logged-in-view" class="view hidden">
+        <div id="banner-detected" class="banner hidden">
+          <p class="banner-text">
+            We found a job description on this page.
+          </p>
+          <button id="banner-generate-btn" class="btn btn-primary btn-sm btn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+            <span id="banner-generate-btn-label">Generate resume</span>
+          </button>
+        </div>
+
+        <div id="deep-link-notice" class="notice hidden">
+          <p id="deep-link-text"></p>
+          <button id="deep-link-btn" class="btn btn-outline btn-sm"></button>
+        </div>
+
+        <form id="paste-form" class="card">
+          <label class="field-label" for="jd-textarea">Job description</label>
+          <textarea
+            id="jd-textarea"
+            placeholder="Paste the job description here..."
+            rows="5"
+          ></textarea>
+
+          <div class="row">
+            <div class="field">
+              <label class="field-label" for="company-input">Company</label>
+              <input id="company-input" type="text" placeholder="Optional" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="position-input">Position</label>
+              <input id="position-input" type="text" placeholder="Optional" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="cv-select">Master CV</label>
+            <select id="cv-select"></select>
+          </div>
+
+          <label class="checkbox-row">
+            <input id="cover-letter-checkbox" type="checkbox" />
+            Also generate a cover letter
+          </label>
+
+          <label class="checkbox-row fake-mode-row hidden" id="fake-mode-row">
+            <input id="fake-mode-checkbox" type="checkbox" />
+            Fake mode (dev testing — skips AI calls)
+          </label>
+
+          <button id="generate-btn" type="submit" class="btn btn-primary btn-block btn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+            <span id="generate-btn-label">Generate</span>
+          </button>
+          <p id="dispatch-error" class="error-text hidden"></p>
+        </form>
+
+        <div class="history">
+          <div class="history-header">
+            <span>History</span>
+          </div>
+          <ul id="job-list" class="job-list"></ul>
+          <p id="job-list-empty" class="muted hidden">
+            No resumes generated yet.
+          </p>
+          <button id="view-all-btn" class="link-btn hidden">
+            View full history on the website →
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -16,11 +16,21 @@ import User from "@/models/User";
  * Throws "UNAUTHORIZED", "USER_NOT_FOUND", or "API_KEY_MISSING".
  */
 export async function getUserApiKey() {
-  await dbConnect();
   const session = await auth();
   if (!session?.user) throw new Error("UNAUTHORIZED");
+  return getUserApiKeyById(String(session.user.id));
+}
 
-  const userId = String(session.user.id);
+/**
+ * Same as getUserApiKey(), but resolves credentials directly from a known
+ * userId instead of the current session. Used by contexts with no session
+ * available, e.g. the extension job processor (src/lib/extensionJobProcessor.js)
+ * running inside after().
+ *
+ * Throws "USER_NOT_FOUND" or "API_KEY_MISSING".
+ */
+export async function getUserApiKeyById(userId) {
+  await dbConnect();
   const user = await User.findById(userId)
     .select(
       "apiKeyMode encryptedApiKey encryptedDek geminiApiKey proxyUrl encryptedProxySecret encryptedProxySecretDek"

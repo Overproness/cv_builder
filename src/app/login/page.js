@@ -47,7 +47,20 @@ export default function LoginPage() {
       setErrorMessage("Invalid credentials.");
     } else {
       trackEvent(ANALYTICS_EVENTS.LOGIN_COMPLETED);
-      router.push("/");
+      // NextAuth's middleware appends ?callbackUrl=<original protected URL>
+      // when it redirects an unauthenticated visitor here (e.g. from
+      // /extension/authorize during the Chrome extension's login handoff).
+      // Honor it so the user lands back where they were headed instead of
+      // always going to the homepage. Only accept same-origin relative
+      // paths to avoid an open-redirect via a crafted ?callbackUrl=.
+      const rawCallbackUrl = new URLSearchParams(window.location.search).get(
+        "callbackUrl",
+      );
+      const callbackUrl =
+        rawCallbackUrl && /^\/(?!\/)/.test(rawCallbackUrl)
+          ? rawCallbackUrl
+          : null;
+      router.push(callbackUrl || "/");
       router.refresh();
     }
   };

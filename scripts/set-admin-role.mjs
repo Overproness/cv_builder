@@ -4,9 +4,11 @@
 // Usage: npm run set-admin -- <email>
 //    or: node scripts/set-admin-role.mjs <email>
 
-import { loadEnvConfig } from "@next/env";
+// import { loadEnvConfig } from "@next/env";
+import nextEnv from "@next/env";
 import mongoose from "mongoose";
 
+const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
 
 const email = process.argv[2];
@@ -35,7 +37,9 @@ if (result.matchedCount === 0) {
   console.error(`No user found with email: ${email}`);
   process.exitCode = 1;
 } else {
-  console.log(`${email} is now an admin. Log out and back in for it to take effect.`);
+  console.log(
+    `${email} is now an admin. Log out and back in for it to take effect.`,
+  );
 }
 
 await mongoose.disconnect();

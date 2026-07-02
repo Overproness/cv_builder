@@ -1,0 +1,75 @@
+/* Colors mirror the CV Builder website's theme tokens (src/app/globals.css:
+   --primary, --destructive) so the injected button reads as the same
+   product as the site, even though it's rendered inside third-party pages.
+   Kept to a system font stack here (unlike popup.css) to avoid loading an
+   external webfont on every page the content script runs on. */
+#cvbuilder-inject-button {
+  all: initial;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  color-scheme: light;
+}
+
+#cvbuilder-inject-button .cvbuilder-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: oklch(0.7227 0.192 149.5793); /* --primary */
+  color: oklch(1 0 0); /* --primary-foreground */
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+#cvbuilder-inject-button .cvbuilder-btn svg {
+  flex-shrink: 0;
+}
+
+#cvbuilder-inject-button .cvbuilder-btn:hover {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.3);
+  transform: translateY(-1px);
+}
+
+#cvbuilder-inject-button .cvbuilder-btn:disabled {
+  opacity: 0.75;
+  cursor: default;
+  transform: none;
+}
+
+#cvbuilder-inject-button .cvbuilder-status {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  max-width: 220px;
+  text-align: right;
+  font-size: 11px;
+  color: oklch(0.3729 0.0306 259.7328); /* --foreground */
+  background: oklch(1 0 0); /* --card */
+  border: 1px solid oklch(0.9276 0.0058 264.5313); /* --border */
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+}
+
+#cvbuilder-inject-button .cvbuilder-status:empty {
+  display: none;
+}
+
+#cvbuilder-inject-button .cvbuilder-status-error {
+  color: oklch(0.6368 0.2078 25.3313); /* --destructive */
+}

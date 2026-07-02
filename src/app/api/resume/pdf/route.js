@@ -1,3 +1,4 @@
+import { compileLatexToPdf, LatexCompileError } from "@/lib/latexCompileClient";
 import { logServerError } from "@/lib/serverLogger";
 import { NextResponse } from "next/server";
 
@@ -13,62 +14,25 @@ export async function POST(request) {
       );
     }
 
-    const serverUrl = process.env.LATEX_SERVER_URL;
-    const apiKey = process.env.LATEX_SERVER_API_KEY;
-
-    if (!serverUrl) {
-      console.error("LATEX_SERVER_URL not configured");
-      return NextResponse.json(
-        {
-          error:
-            "LaTeX compilation server is not configured. Please set LATEX_SERVER_URL environment variable.",
-        },
-        { status: 503 },
-      );
+    let pdfBuffer;
+    try {
+      pdfBuffer = await compileLatexToPdf(latex);
+    } catch (error) {
+      if (error instanceof LatexCompileError) {
+        if (error.status !== 503) {
+          logServerError("❌ Compilation failed:", error, {
+            event: "pdf_compile_failed",
+          });
+        } else {
+          console.error(error.message);
+        }
+        return NextResponse.json(
+          { error: error.message },
+          { status: error.status || 500 },
+        );
+      }
+      throw error;
     }
-
-    if (!apiKey) {
-      console.error("LATEX_SERVER_API_KEY not configured");
-      return NextResponse.json(
-        {
-          error:
-            "LaTeX compilation server API key is not configured. Please set LATEX_SERVER_API_KEY environment variable.",
-        },
-        { status: 503 },
-      );
-    }
-
-    // Call the LaTeX compilation server
-    console.log("📤 Sending LaTeX to compilation server...");
-    const response = await fetch(`${serverUrl}/compile`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": apiKey,
-      },
-      body: JSON.stringify({
-        latex,
-        compiler: "pdflatex",
-      }),
-    });
-    console.log("🚀 ~ POST ~ response:", response);
-
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: "Unknown server error" }));
-      logServerError("❌ Compilation failed:", new Error(error.error || `Compilation failed: ${response.status}`), {
-        event: "pdf_compile_failed",
-      });
-      return NextResponse.json(
-        { error: error.error || `Compilation failed: ${response.status}` },
-        { status: response.status },
-      );
-    }
-
-    // Get the PDF and return it
-    const pdfBuffer = await response.arrayBuffer();
-    console.log("✅ PDF compilation successful");
 
     return new NextResponse(pdfBuffer, {
       status: 200,

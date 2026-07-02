@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "CV Builder — Tailored Resume Generator",
+  "version": "0.1.0",
+  "description": "Generate a tailored resume and cover letter from any job posting, without leaving the page.",
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "identity", "activeTab", "scripting", "downloads", "alarms"],
+  "host_permissions": [
+    "https://cvbuilder.example.com/*",
+    "http://localhost:3000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/*",
+        "https://*.indeed.com/*",
+        "https://boards.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://*.myworkdayjobs.com/*",
+        "http://*/*",
+        "https://*/*"
+      ],
+      "exclude_matches": [
+        "https://cvbuilder.example.com/*",
+        "http://localhost:3000/*"
+      ],
+      "js": [
+        "content/detectors/site-detectors.js",
+        "content/detectors/generic-heuristic.js",
+        "content/content.js"
+      ],
+      "css": ["content/inject-button.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA12Ukh7KCqRlrqb2sjhcTA8MbIe4Hf6QaU61gsTjO18/DP6xQSvlw14m8alcX28MS9uLXjpGeSHbMcoFCxzbmYcxnfjIsVjtJbBG4QqkgziZ39ETRY6DrTUN+GQ72nmR/m2FaqIXc3HAiWOW6fmWt8uDTJ85fuYSHThXrnT5KiRREtljMiRb22UIg1obEiNACmihi5Yk8tF6vD/6UObH13bEmU0hEzPI22IrswRlJkvCyrpZaFWhrkcuUnaTa0KRf92ZbXSteqa5Q+YVEdso475U058HjNNt3WrSCN6oGUiPOh453KOEOSp2QyjXQRoBJ/nlSH9rKsii3Q/CagEObbQIDAQAB"
+}
