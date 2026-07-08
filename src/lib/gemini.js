@@ -89,9 +89,53 @@ const METRIC_SIGNAL_PATTERN =
   /\b\d+(?:[.,]\d+)?\s*(?:%|percent|x|k|m|ms|sec|seconds?|minutes?|hours?|users?|clients?|representatives?|participants?|projects?|workflows?|events?|orders?|transactions?|queries?)?\b/i;
 const DOMAIN_SIGNAL_PROFILES = [
   {
+    name: "software-ai-data-internship",
+    test: /\b(intern|internship|undergraduate|student)\b[\s\S]*\b(software|engineering|developer|ai|data|llm|machine\s*learning|web|mobile|startup)\b|\b(software|engineering|developer|ai|data|llm|machine\s*learning|web|mobile|startup)\b[\s\S]*\b(intern|internship|undergraduate|student)\b/i,
+    positiveTerms: [
+      "ai",
+      "ai agent",
+      "api",
+      "backend",
+      "cloud",
+      "data engineering",
+      "data science",
+      "data warehouse",
+      "database",
+      "django",
+      "docker",
+      "fastapi",
+      "flask",
+      "flutter",
+      "full stack",
+      "fullstack",
+      "github",
+      "llm",
+      "machine learning",
+      "mern",
+      "mobile",
+      "node",
+      "python",
+      "rag",
+      "react",
+      "sql",
+      "startup",
+      "web",
+    ],
+    adjacentNegativeTerms: [
+      "blockchain",
+      "crypto",
+      "front run",
+      "rug pull",
+      "solana",
+      "token",
+      "trading",
+      "wallet",
+      "web3",
+    ],
+  },
+  {
     name: "machine-learning-computer-vision",
-    test:
-      /\b(machine\s*learning|deep\s*learning|computer\s*vision|image|opencv|cnn|neural|pytorch|tensorflow|classification|detection|segmentation|model|ai|ml)\b/i,
+    test: /\b(machine\s*learning|deep\s*learning|computer\s*vision|image|opencv|cnn|neural|pytorch|tensorflow|classification|detection|segmentation|model|ai|ml)\b/i,
     positiveTerms: [
       "machine learning",
       "deep learning",
@@ -128,8 +172,7 @@ const DOMAIN_SIGNAL_PROFILES = [
   },
   {
     name: "web-full-stack",
-    test:
-      /\b(web|frontend|front\s*end|backend|full\s*stack|fullstack|react|next\.?js|node|express|api|mern|mongodb|database|portal|crm|erp)\b/i,
+    test: /\b(web|frontend|front\s*end|backend|full\s*stack|fullstack|react|next\.?js|node|express|api|mern|mongodb|database|portal|crm|erp)\b/i,
     positiveTerms: [
       "web",
       "frontend",
@@ -165,8 +208,7 @@ const DOMAIN_SIGNAL_PROFILES = [
   },
   {
     name: "business-intelligence-analytics",
-    test:
-      /\b(power\s*bi|business\s*intelligence|dashboard|analytics|telemetry|visualization|reporting|data\s*analyst|bi\b)\b/i,
+    test: /\b(power\s*bi|business\s*intelligence|dashboard|analytics|telemetry|visualization|reporting|data\s*analyst|bi\b)\b/i,
     positiveTerms: [
       "power bi",
       "business intelligence",
@@ -189,10 +231,126 @@ const DOMAIN_SIGNAL_PROFILES = [
   },
 ];
 
+const MEANINGFUL_SHORT_JOB_TOKENS = new Set([
+  "ai",
+  "bi",
+  "cv",
+  "ml",
+  "nlp",
+  "qa",
+  "ui",
+  "ux",
+]);
+
+const GENERIC_JOB_TERMS = new Set([
+  "across",
+  "assigned",
+  "based",
+  "basic",
+  "competitive",
+  "completion",
+  "continuous",
+  "contribute",
+  "currently",
+  "decision",
+  "depending",
+  "duration",
+  "eager",
+  "early",
+  "engineers",
+  "enjoy",
+  "excellent",
+  "experience",
+  "experienced",
+  "firsthand",
+  "full",
+  "gain",
+  "good",
+  "great",
+  "grow",
+  "hands",
+  "ideal",
+  "intern",
+  "internship",
+  "isolated",
+  "job",
+  "knowledge",
+  "lead",
+  "learn",
+  "learning",
+  "looking",
+  "meaningful",
+  "modern",
+  "monthly",
+  "motivated",
+  "offer",
+  "opportunity",
+  "outstanding",
+  "ownership",
+  "paid",
+  "performance",
+  "perks",
+  "plus",
+  "position",
+  "preferred",
+  "proactive",
+  "production",
+  "projects",
+  "quickly",
+  "real",
+  "related",
+  "remote",
+  "requirements",
+  "role",
+  "scaled",
+  "someone",
+  "startup",
+  "student",
+  "successful",
+  "supporting",
+  "tasks",
+  "technical",
+  "technologies",
+  "typical",
+  "undergraduate",
+  "upon",
+  "wants",
+  "work",
+  "youll",
+]);
+
+const OFF_TOPIC_DOMAIN_PROFILES = [
+  {
+    requestedTerms: [
+      "blockchain",
+      "crypto",
+      "defi",
+      "fintech",
+      "solana",
+      "token",
+      "trading",
+      "wallet",
+      "web3",
+    ],
+    offTopicTerms: [
+      "blockchain",
+      "crypto",
+      "defi",
+      "front run",
+      "rug pull",
+      "solana",
+      "token",
+      "trading",
+      "wallet",
+      "web3",
+    ],
+  },
+];
+
 const TAILORED_RESUME_GENERATION_CONFIG = {
-  temperature: 0,
-  topP: 1,
-  topK: 1,
+  temperature: 1.5,
+  topP: 0.98,
+  topK: 64,
   candidateCount: 1,
   responseMimeType: "application/json",
 };
@@ -296,7 +454,9 @@ function getMultilineBulletInfo(points = []) {
 }
 
 function trimBulletToCharLimit(point, charLimit) {
-  const normalized = String(point || "").replace(/\s+/g, " ").trim();
+  const normalized = String(point || "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (normalized.length <= charLimit) return normalized;
 
   let candidate = normalized.slice(0, charLimit).trim();
@@ -398,9 +558,8 @@ function getFeaturedEntryIssues(cvData) {
     }
 
     if (multilineBullets.length !== FEATURED_ENTRY_MULTILINE_BULLETS) {
-      const oneBasedIndexes = multilineBullets
-        .map(({ index }) => index + 1)
-        .join(", ") || "none";
+      const oneBasedIndexes =
+        multilineBullets.map(({ index }) => index + 1).join(", ") || "none";
       issues.push(
         `${sectionName} "${label}" is the featured/most important ${sectionName} entry and must have exactly ${FEATURED_ENTRY_MULTILINE_BULLETS} multi-line bullets ` +
           `(currently ${multilineBullets.length}; bullets ${oneBasedIndexes}). Make exactly two bullets exceed about ${SINGLE_LINE_BULLET_CHAR_LIMIT} characters and keep one supporting bullet near ${SINGLE_LINE_BULLET_CHAR_LIMIT} characters or less.`,
@@ -411,7 +570,10 @@ function getFeaturedEntryIssues(cvData) {
   return issues;
 }
 function enforceEntryMultilineBulletLimit(cvData, jobProfile = null) {
-  const fallbackProfile = jobProfile || { terms: new Set(), offTopicTerms: new Set() };
+  const fallbackProfile = jobProfile || {
+    terms: new Set(),
+    offTopicTerms: new Set(),
+  };
   const capEntries = (entries = []) =>
     entries.map((entry) => {
       const points = Array.isArray(entry.points)
@@ -481,16 +643,14 @@ function getEntrySpecificTerms(entry, sourceEntry) {
     "with",
   ]);
   const tags = [
-    ...(Array.isArray(entry?.tags) ? entry.tags : [entry?.tags].filter(Boolean)),
+    ...(Array.isArray(entry?.tags)
+      ? entry.tags
+      : [entry?.tags].filter(Boolean)),
     ...(Array.isArray(sourceEntry?.tags)
       ? sourceEntry.tags
       : [sourceEntry?.tags].filter(Boolean)),
   ];
-  const termSource = [
-    entry?.technologies,
-    sourceEntry?.technologies,
-    ...tags,
-  ]
+  const termSource = [entry?.technologies, sourceEntry?.technologies, ...tags]
     .filter(Boolean)
     .join(" ");
 
@@ -545,7 +705,10 @@ function getBulletQualitySignals(point, entry, sourceEntry, jobProfile) {
 }
 
 function getSourceEntryForQuality(entry, sourceEntries, sectionKey) {
-  return findMatchingSourceEntryMatch(entry, sourceEntries, sectionKey)?.entry || null;
+  return (
+    findMatchingSourceEntryMatch(entry, sourceEntries, sectionKey)?.entry ||
+    null
+  );
 }
 
 function getBulletQualityIssues(cvData, masterCV = {}, jobProfile = null) {
@@ -663,9 +826,35 @@ function normalizedTermAppears(normalizedText, term) {
 
 function countTermHits(normalizedText, terms = []) {
   return terms.reduce(
-    (count, term) => count + (normalizedTermAppears(normalizedText, term) ? 1 : 0),
+    (count, term) =>
+      count + (normalizedTermAppears(normalizedText, term) ? 1 : 0),
     0,
   );
+}
+
+function isJobProfileTerm(token) {
+  if (!token) return false;
+  if (GENERIC_JOB_TERMS.has(token)) return false;
+  return token.length > 2 || MEANINGFUL_SHORT_JOB_TOKENS.has(token);
+}
+
+function getOffTopicTermsForTarget(rawTargetText) {
+  const normalizedTarget = normalizeSourceText(rawTargetText);
+  if (!normalizedTarget) return new Set();
+
+  const offTopicTerms = new Set();
+  for (const profile of OFF_TOPIC_DOMAIN_PROFILES) {
+    const isRequested = profile.requestedTerms.some((term) =>
+      normalizedTermAppears(normalizedTarget, term),
+    );
+    if (isRequested) continue;
+
+    for (const term of profile.offTopicTerms) {
+      offTopicTerms.add(normalizeSourceText(term));
+    }
+  }
+
+  return offTopicTerms;
 }
 
 function getActiveDomainProfiles(rawTargetText) {
@@ -706,7 +895,10 @@ function getDomainFitScore(entry, jobProfile, sectionName = "") {
     );
 
     if (positiveHits > 0) {
-      score += Math.min(isProject ? 42 : 26, positiveHits * (isProject ? 9 : 6));
+      score += Math.min(
+        isProject ? 42 : 26,
+        positiveHits * (isProject ? 9 : 6),
+      );
     }
 
     if (negativeHits > 0) {
@@ -755,8 +947,12 @@ function sourceSimilarity(a, b) {
     return 1;
   }
 
-  const tokensA = new Set(normalizedA.split(/\s+/).filter((token) => token.length > 2));
-  const tokensB = new Set(normalizedB.split(/\s+/).filter((token) => token.length > 2));
+  const tokensA = new Set(
+    normalizedA.split(/\s+/).filter((token) => token.length > 2),
+  );
+  const tokensB = new Set(
+    normalizedB.split(/\s+/).filter((token) => token.length > 2),
+  );
   if (tokensA.size === 0 || tokensB.size === 0) return 0;
 
   let overlap = 0;
@@ -777,7 +973,10 @@ function findMatchingSourceEntryMatch(entry, sourceEntries = [], sectionName) {
     if (sectionName === "projects") {
       score = Math.max(
         sourceSimilarity(entry.name, source.name),
-        sourceSimilarity(getProjectCoreName(entry.name), getProjectCoreName(source.name)),
+        sourceSimilarity(
+          getProjectCoreName(entry.name),
+          getProjectCoreName(source.name),
+        ),
       );
       const generatedLink = normalizeSourceUrl(entry.demo_link);
       const sourceLink = normalizeSourceUrl(source.demo_link);
@@ -819,7 +1018,10 @@ function findMatchingSourceEntryMatch(entry, sourceEntries = [], sectionName) {
 }
 
 function findMatchingSourceEntry(entry, sourceEntries = [], sectionName) {
-  return findMatchingSourceEntryMatch(entry, sourceEntries, sectionName)?.entry || null;
+  return (
+    findMatchingSourceEntryMatch(entry, sourceEntries, sectionName)?.entry ||
+    null
+  );
 }
 
 function findMatchingQualificationMatch(entry, sourceEntries = []) {
@@ -881,10 +1083,12 @@ function getQualificationSourceSelectionIssues(cvData, masterCV) {
   const issues = [];
 
   for (const qualification of cvData.additional_qualifications || []) {
-    if (!findMatchingQualificationMatch(
-      qualification,
-      masterCV.additional_qualifications || [],
-    )) {
+    if (
+      !findMatchingQualificationMatch(
+        qualification,
+        masterCV.additional_qualifications || [],
+      )
+    ) {
       issues.push(
         `Additional qualification "${qualification.title || ""}" does not match any source certification, publication, or achievement in the Master CV. Select only from the allowed source entries.`,
       );
@@ -992,7 +1196,9 @@ function formatAllowedSourceEntries(masterCV) {
     .join("\n");
   const projects = (masterCV.projects || [])
     .map((entry, index) => {
-      const link = entry.demo_link ? ` | link: ${entry.demo_link}` : " | no source link";
+      const link = entry.demo_link
+        ? ` | link: ${entry.demo_link}`
+        : " | no source link";
       return `${index + 1}. ${entry.name || "Project"}${link}${formatTagsForDisplay(entry.tags)}`;
     })
     .join("\n");
@@ -1005,7 +1211,9 @@ function getSourceSelectionIssues(cvData, masterCV) {
   const issues = [];
 
   for (const exp of cvData.experience || []) {
-    if (!findMatchingSourceEntry(exp, masterCV.experience || [], "experience")) {
+    if (
+      !findMatchingSourceEntry(exp, masterCV.experience || [], "experience")
+    ) {
       issues.push(
         `Experience "${exp.role || ""}" at "${exp.company || ""}" does not match any source experience entry in the Master CV. Select only from the allowed source entries.`,
       );
@@ -1013,7 +1221,11 @@ function getSourceSelectionIssues(cvData, masterCV) {
   }
 
   for (const project of cvData.projects || []) {
-    const sourceProject = findMatchingSourceEntry(project, masterCV.projects || [], "projects");
+    const sourceProject = findMatchingSourceEntry(
+      project,
+      masterCV.projects || [],
+      "projects",
+    );
     if (!sourceProject) {
       issues.push(
         `Project "${project.name || ""}" does not match any source project in the Master CV. Remove it and replace it only with a real Master CV project if space allows.`,
@@ -1036,7 +1248,9 @@ function getSourceSelectionIssues(cvData, masterCV) {
 }
 
 function getEntryText(entry) {
-  const tags = Array.isArray(entry.tags) ? entry.tags : [entry.tags].filter(Boolean);
+  const tags = Array.isArray(entry.tags)
+    ? entry.tags
+    : [entry.tags].filter(Boolean);
   const points = Array.isArray(entry.points)
     ? entry.points
     : [entry.points].filter(Boolean);
@@ -1120,7 +1334,9 @@ function getEntryAmbitionScore(entry) {
 
 function getSupplementalFillScore(candidate, section) {
   const sectionBonus = section === "projects" ? 4 : 0;
-  return candidate.score + getEntryAmbitionScore(candidate.entry) + sectionBonus;
+  return (
+    candidate.score + getEntryAmbitionScore(candidate.entry) + sectionBonus
+  );
 }
 
 function flattenRubricSignals(value) {
@@ -1137,7 +1353,11 @@ function getPositiveRubricSignals(rubric) {
 
   return Object.entries(rubric).flatMap(([key, value]) => {
     const normalizedKey = normalizeSourceText(key);
-    if (/\b(negative|weak|weaker|penal|avoid|off|irrelevant)\b/.test(normalizedKey)) {
+    if (
+      /\b(negative|weak|weaker|penal|avoid|off|irrelevant)\b/.test(
+        normalizedKey,
+      )
+    ) {
       return [];
     }
     return flattenRubricSignals(value);
@@ -1145,7 +1365,8 @@ function getPositiveRubricSignals(rubric) {
 }
 
 function getTargetTagAlignmentText(parsedRanking, jobDescription, position) {
-  const targetRole = parsedRanking?.target_role || parsedRanking?.targetRole || "";
+  const targetRole =
+    parsedRanking?.target_role || parsedRanking?.targetRole || "";
   return [
     position,
     jobDescription,
@@ -1166,9 +1387,7 @@ function getTagAlignmentScore(entry, targetRelevanceText = "") {
 
   for (const tag of normalizeTags(entry?.tags)) {
     const tagText = normalizeSourceText(tag);
-    const tagTokens = tagText
-      .split(/\s+/)
-      .filter((token) => token.length > 2);
+    const tagTokens = tagText.split(/\s+/).filter((token) => token.length > 2);
 
     if (!tagTokens.length) continue;
 
@@ -1225,8 +1444,7 @@ function compareHybridCandidates(a, b) {
   const domainDifference = (b.domainFitScore || 0) - (a.domainFitScore || 0);
   if (domainDifference !== 0) return domainDifference;
 
-  const tagDifference =
-    (b.tagAlignmentScore || 0) - (a.tagAlignmentScore || 0);
+  const tagDifference = (b.tagAlignmentScore || 0) - (a.tagAlignmentScore || 0);
   if (tagDifference !== 0) return tagDifference;
 
   const aRank = a.aiRank || Number.MAX_SAFE_INTEGER;
@@ -1240,12 +1458,14 @@ function getJobProfile(jobDescription, position) {
   const source = `${position || ""} ${jobDescription || ""}`;
   const normalized = normalizeSourceText(source);
   const terms = new Set(
-    normalized.split(/\s+/).filter((token) => token.length > 2 && token !== "resume"),
+    normalized
+      .split(/\s+/)
+      .filter((token) => token !== "resume" && isJobProfileTerm(token)),
   );
 
   return {
     terms,
-    offTopicTerms: new Set(),
+    offTopicTerms: getOffTopicTermsForTarget(source),
     targetText: normalized,
     domainProfiles: getActiveDomainProfiles(source),
   };
@@ -1257,7 +1477,14 @@ function scoreEntryForJob(entry, jobProfile, sectionName = "") {
   const entryTokens = new Set(normalized.split(/\s+/).filter(Boolean));
   let score = 0;
   for (const term of jobProfile.terms) {
-    if (entryTokens.has(term) || normalized.includes(term)) score += 2;
+    if (entryTokens.has(term) || normalizedTermAppears(normalized, term)) {
+      score += 2;
+    }
+  }
+  for (const term of jobProfile.offTopicTerms) {
+    if (entryTokens.has(term) || normalizedTermAppears(normalized, term)) {
+      score -= sectionName === "projects" ? 5 : 3;
+    }
   }
 
   score += Math.round(getTagAlignmentScore(entry, jobProfile.targetText) / 4);
@@ -1307,13 +1534,18 @@ function compareRankedEntries(a, b) {
     (b.exactTagMatchScore || 0) - (a.exactTagMatchScore || 0);
   if (exactTagDifference !== 0) return exactTagDifference;
   if (a.score !== b.score) return b.score - a.score;
-  if (a.important !== b.important) return Number(b.important) - Number(a.important);
+  if (a.important !== b.important)
+    return Number(b.important) - Number(a.important);
   if (a.recency !== b.recency) return b.recency - a.recency;
   return a.index - b.index;
 }
 
 function rankEntriesForJob(entries = [], jobProfile, options = {}) {
-  const { filter = () => true, scoreAdjustment = 0, sectionName = "" } = options;
+  const {
+    filter = () => true,
+    scoreAdjustment = 0,
+    sectionName = "",
+  } = options;
 
   return entries
     .map((entry, index) => {
@@ -1328,7 +1560,8 @@ function rankEntriesForJob(entries = [], jobProfile, options = {}) {
           entry,
           jobProfile.targetText,
         ),
-        score: scoreEntryForJob(entry, jobProfile, sectionName) + scoreAdjustment,
+        score:
+          scoreEntryForJob(entry, jobProfile, sectionName) + scoreAdjustment,
       };
     })
     .filter((candidate) => filter(candidate.entry))
@@ -1365,7 +1598,9 @@ function selectRankedEntries(
   );
   return [
     ...entriesWithMinimumFacts,
-    ...rankedEntries.filter((candidate) => !selectedIndexes.has(candidate.index)),
+    ...rankedEntries.filter(
+      (candidate) => !selectedIndexes.has(candidate.index),
+    ),
   ].slice(0, limit);
 }
 
@@ -1378,7 +1613,9 @@ function formatPlannedEntry(candidate, sectionName) {
   } else if (sectionName === "projects") {
     label = entry.name || "Project";
   } else {
-    label = [entry.title, entry.organization].filter(Boolean).join(" | ") || "Qualification";
+    label =
+      [entry.title, entry.organization].filter(Boolean).join(" | ") ||
+      "Qualification";
   }
 
   const tags = normalizeTags([
@@ -1414,10 +1651,10 @@ function scoreBulletForJob(point, jobProfile) {
   const tokens = new Set(normalized.split(/\s+/).filter(Boolean));
   let score = 0;
   for (const term of jobProfile.terms) {
-    if (tokens.has(term) || normalized.includes(term)) score += 2;
+    if (tokens.has(term) || normalizedTermAppears(normalized, term)) score += 2;
   }
   for (const term of jobProfile.offTopicTerms) {
-    if (tokens.has(term) || normalized.includes(term)) score -= 2;
+    if (tokens.has(term) || normalizedTermAppears(normalized, term)) score -= 2;
   }
   if (/\d/.test(point)) score += 1;
 
@@ -1462,12 +1699,20 @@ function buildDeterministicSelectionPlan(
   { targetExperience, targetProjects, targetQualifications },
 ) {
   const jobProfile = getJobProfile(jobDescription, position);
-  const rankedExperience = rankEntriesForJob(masterCV.experience || [], jobProfile, {
-    sectionName: "experience",
-  });
-  const rankedProjects = rankEntriesForJob(masterCV.projects || [], jobProfile, {
-    sectionName: "projects",
-  });
+  const rankedExperience = rankEntriesForJob(
+    masterCV.experience || [],
+    jobProfile,
+    {
+      sectionName: "experience",
+    },
+  );
+  const rankedProjects = rankEntriesForJob(
+    masterCV.projects || [],
+    jobProfile,
+    {
+      sectionName: "projects",
+    },
+  );
   const rankedQualifications = rankEntriesForJob(
     masterCV.additional_qualifications || [],
     jobProfile,
@@ -1511,7 +1756,9 @@ function getAIRankingItems(parsedRanking, sectionName) {
 function getOneBasedSourceIndex(item) {
   const rawIndex = item?.source_index ?? item?.sourceIndex ?? item?.index;
   const sourceIndex = Number(rawIndex);
-  return Number.isInteger(sourceIndex) && sourceIndex > 0 ? sourceIndex - 1 : -1;
+  return Number.isInteger(sourceIndex) && sourceIndex > 0
+    ? sourceIndex - 1
+    : -1;
 }
 
 function clampAIScore(value, fallbackScore = 0) {
@@ -1521,7 +1768,9 @@ function clampAIScore(value, fallbackScore = 0) {
 }
 
 function mapRankedEntriesByIndex(rankedEntries = []) {
-  return new Map(rankedEntries.map((candidate) => [candidate.index, candidate]));
+  return new Map(
+    rankedEntries.map((candidate) => [candidate.index, candidate]),
+  );
 }
 
 function selectHybridRankedEntries({
@@ -1564,7 +1813,10 @@ function selectHybridRankedEntries({
       }),
       score: Math.max(
         0,
-        Math.min(140, baseScore + tagAlignmentScore + domainFitScore + deterministicSignal),
+        Math.min(
+          140,
+          baseScore + tagAlignmentScore + domainFitScore + deterministicSignal,
+        ),
       ),
       baseScore,
       tagAlignmentScore,
@@ -1577,7 +1829,8 @@ function selectHybridRankedEntries({
   }
 
   for (const fallback of fallbackRankedEntries) {
-    if (selectedIndexes.has(fallback.index) || !filter(fallback.entry)) continue;
+    if (selectedIndexes.has(fallback.index) || !filter(fallback.entry))
+      continue;
 
     const tagAlignmentScore = getTagAlignmentScore(
       fallback.entry,
@@ -1592,7 +1845,10 @@ function selectHybridRankedEntries({
       ...fallback,
       score: Math.max(
         0,
-        Math.min(140, fallback.score + tagAlignmentScore + (fallback.domainFitScore || 0)),
+        Math.min(
+          140,
+          fallback.score + tagAlignmentScore + (fallback.domainFitScore || 0),
+        ),
       ),
       baseScore: fallback.score,
       tagAlignmentScore,
@@ -1614,8 +1870,8 @@ function selectHybridRankedEntries({
   if (entriesWithMinimumFacts.length >= limit) {
     return [
       ...entriesWithMinimumFacts,
-      ...candidates.filter((candidate) =>
-        !hasMinimumSourceBulletFacts(candidate.entry),
+      ...candidates.filter(
+        (candidate) => !hasMinimumSourceBulletFacts(candidate.entry),
       ),
     ].slice(0, limit);
   }
@@ -1630,12 +1886,20 @@ function buildSelectionPlanFromAIRanking(
   targetRelevanceText = "",
 ) {
   const jobProfile = fallbackPlan.jobProfile;
-  const rankedExperience = rankEntriesForJob(masterCV.experience || [], jobProfile, {
-    sectionName: "experience",
-  });
-  const rankedProjects = rankEntriesForJob(masterCV.projects || [], jobProfile, {
-    sectionName: "projects",
-  });
+  const rankedExperience = rankEntriesForJob(
+    masterCV.experience || [],
+    jobProfile,
+    {
+      sectionName: "experience",
+    },
+  );
+  const rankedProjects = rankEntriesForJob(
+    masterCV.projects || [],
+    jobProfile,
+    {
+      sectionName: "projects",
+    },
+  );
   const rankedQualifications = rankEntriesForJob(
     masterCV.additional_qualifications || [],
     jobProfile,
@@ -1819,7 +2083,9 @@ function getSelectionPlanIssues(cvData, masterCV, selectionPlan) {
   ];
 
   for (const [sectionName, sourceEntries, label] of sectionConfigs) {
-    const expected = selectionPlan[sectionName].map((candidate) => candidate.index);
+    const expected = selectionPlan[sectionName].map(
+      (candidate) => candidate.index,
+    );
     const actual = getSourceIndexesForSection(
       cvData[sectionName] || [],
       sourceEntries,
@@ -1828,11 +2094,11 @@ function getSelectionPlanIssues(cvData, masterCV, selectionPlan) {
 
     if (expected.join(",") !== actual.join(",")) {
       issues.push(
-        `${label} selection/order changed. Expected source indexes [${expected
-          .map((index) => index + 1)
-          .join(", ") || "none"}], but received [${actual
-          .map((index) => index + 1)
-          .join(", ") || "none"}]. Follow the selection plan exactly.`,
+        `${label} selection/order changed. Expected source indexes [${
+          expected.map((index) => index + 1).join(", ") || "none"
+        }], but received [${
+          actual.map((index) => index + 1).join(", ") || "none"
+        }]. Follow the selection plan exactly.`,
       );
     }
   }
@@ -1925,7 +2191,9 @@ function enforceDeterministicSelectionPlan(cvData, masterCV, selectionPlan) {
   };
 
   const buildQualificationEntry = (candidate) => {
-    const sourceEntry = (masterCV.additional_qualifications || [])[candidate.index];
+    const sourceEntry = (masterCV.additional_qualifications || [])[
+      candidate.index
+    ];
     const generatedEntry = qualificationMap.get(candidate.index);
     return generatedEntry
       ? copySourceFields(generatedEntry, sourceEntry, [
@@ -1937,7 +2205,11 @@ function enforceDeterministicSelectionPlan(cvData, masterCV, selectionPlan) {
           "tags",
           "important",
         ])
-      : fallbackSourceEntry(sourceEntry, "additional_qualifications", jobProfile);
+      : fallbackSourceEntry(
+          sourceEntry,
+          "additional_qualifications",
+          jobProfile,
+        );
   };
 
   return {
@@ -1946,8 +2218,9 @@ function enforceDeterministicSelectionPlan(cvData, masterCV, selectionPlan) {
     education: masterCV.education || [],
     experience: selectionPlan.experience.map(buildExperienceEntry),
     projects: selectionPlan.projects.map(buildProjectEntry),
-    additional_qualifications:
-      selectionPlan.additional_qualifications.map(buildQualificationEntry),
+    additional_qualifications: selectionPlan.additional_qualifications.map(
+      buildQualificationEntry,
+    ),
   };
 }
 function hasSimilarBullet(points, candidatePoint) {
@@ -2148,7 +2421,10 @@ function getCompactTechSummary(sourceEntry, section) {
 
 function stripBulletOpening(point) {
   return String(point || "")
-    .replace(/^\s*(achieved|architected|automated|built|collaborated|conducted|created|delivered|deployed|designed|developed|engineered|enhanced|implemented|improved|integrated|led|leveraged|managed|optimized|orchestrated|scaled|spearheaded)\s+/i, "")
+    .replace(
+      /^\s*(achieved|architected|automated|built|collaborated|conducted|created|delivered|deployed|designed|developed|engineered|enhanced|implemented|improved|integrated|led|leveraged|managed|optimized|orchestrated|scaled|spearheaded)\s+/i,
+      "",
+    )
     .replace(/\s+/g, " ")
     .replace(/[.!?]\s*$/g, "")
     .trim();
@@ -2192,7 +2468,11 @@ function getExistingBulletFillCandidates(cvData, masterCV, jobProfile) {
       const points = Array.isArray(entry.points) ? entry.points : [];
       if (points.length !== MIN_ENTRY_BULLETS) continue;
 
-      const sourceEntry = findMatchingSourceEntry(entry, sourceEntries, section);
+      const sourceEntry = findMatchingSourceEntry(
+        entry,
+        sourceEntries,
+        section,
+      );
       if (!sourceEntry) continue;
 
       const entryScore = scoreEntryForJob(sourceEntry, jobProfile, section);
@@ -2222,7 +2502,8 @@ function getExistingBulletFillCandidates(cvData, masterCV, jobProfile) {
           jobProfile,
         );
         const hasExactDuplicate = points.some(
-          (point) => normalizeSourceText(point) === normalizeSourceText(fallbackPoint),
+          (point) =>
+            normalizeSourceText(point) === normalizeSourceText(fallbackPoint),
         );
         if (fallbackPoint && !hasExactDuplicate) {
           candidates.push({
@@ -2230,10 +2511,7 @@ function getExistingBulletFillCandidates(cvData, masterCV, jobProfile) {
             entryIndex,
             point: fallbackPoint,
             score:
-              entryScore +
-              ambitionScore +
-              (section === "projects" ? 4 : 0) -
-              6,
+              entryScore + ambitionScore + (section === "projects" ? 4 : 0) - 6,
           });
         }
       }
@@ -2272,12 +2550,16 @@ function fillExistingEntriesToTargetUsage(cvData, masterCV, jobProfile) {
       jobProfile,
     ).filter(
       (candidate) =>
-        !usedKeys.has(`${candidate.section}:${candidate.entryIndex}:${candidate.point}`),
+        !usedKeys.has(
+          `${candidate.section}:${candidate.entryIndex}:${candidate.point}`,
+        ),
     );
 
     let added = false;
     for (const candidate of candidates) {
-      usedKeys.add(`${candidate.section}:${candidate.entryIndex}:${candidate.point}`);
+      usedKeys.add(
+        `${candidate.section}:${candidate.entryIndex}:${candidate.point}`,
+      );
       const trial = enforceEntryMultilineBulletLimit(
         enforceEntryBulletLimit(addBulletToEntry(filled, candidate)),
         jobProfile,
@@ -2336,7 +2618,8 @@ function getSelectedSourceIndex(entry, masterCV, sectionName) {
 
 function hasSelectedSourceIndex(entries, masterCV, sectionName, sourceIndex) {
   return (entries || []).some(
-    (entry) => getSelectedSourceIndex(entry, masterCV, sectionName) === sourceIndex,
+    (entry) =>
+      getSelectedSourceIndex(entry, masterCV, sectionName) === sourceIndex,
   );
 }
 
@@ -2433,7 +2716,8 @@ function compactResumeToTarget(
     const candidates = (compacted.additional_qualifications || []).map(
       (entry, index) => ({
         index,
-        score: scoreEntryForJob(entry, jobProfile, "additional_qualifications") - 2,
+        score:
+          scoreEntryForJob(entry, jobProfile, "additional_qualifications") - 2,
       }),
     );
     candidates.sort((a, b) => a.score - b.score || b.index - a.index);
@@ -2463,7 +2747,8 @@ function compactResumeToTarget(
 
   for (let guard = 0; guard < 50; guard++) {
     const estimate = currentEstimate();
-    if (estimate.layoutLines <= (estimate.fitMaxLines ?? estimate.maxLines)) break;
+    if (estimate.layoutLines <= (estimate.fitMaxLines ?? estimate.maxLines))
+      break;
 
     const bulletRemoval = getLowestValueBulletRemoval();
     if (bulletRemoval) {
@@ -2504,7 +2789,9 @@ function addSupplementalEntriesToTargetUsage(
   const candidates = getSupplementalCandidates(filled, masterCV, jobProfile);
 
   for (const candidate of candidates) {
-    if (getVisualUsagePercent(estimatePageUsage(filled)) >= TARGET_PAGE_USAGE_MIN) {
+    if (
+      getVisualUsagePercent(estimatePageUsage(filled)) >= TARGET_PAGE_USAGE_MIN
+    ) {
       break;
     }
 
@@ -2561,7 +2848,7 @@ function addSupplementalEntriesToTargetUsage(
   }
 
   return filled;
-}/**
+} /**
  * Returns a stateful generate() caller that automatically falls back to the
  * next model in ALL_MODELS when the current one returns 503.  Within a single
  * exported function call the model index only advances — so all subsequent
@@ -2802,7 +3089,11 @@ function normalizeCVTags(cvData = {}) {
 
 function entryNeedsTags(entry) {
   const hasContent = Boolean(
-    entry?.role || entry?.name || entry?.title || entry?.company || entry?.organization,
+    entry?.role ||
+    entry?.name ||
+    entry?.title ||
+    entry?.company ||
+    entry?.organization,
   );
   return hasContent && normalizeTags(entry.tags).length < 2;
 }
@@ -2897,7 +3188,10 @@ function mergeGeneratedTagsIntoCV(sourceCV, generatedTags = {}) {
 
   return {
     ...sourceCV,
-    experience: mergeSection(sourceCV.experience || [], generatedTags.experience),
+    experience: mergeSection(
+      sourceCV.experience || [],
+      generatedTags.experience,
+    ),
     projects: mergeSection(sourceCV.projects || [], generatedTags.projects),
     additional_qualifications: mergeSection(
       sourceCV.additional_qualifications || [],
@@ -2949,7 +3243,10 @@ OUTPUT JSON SHAPE:
     };
   } catch (error) {
     if (error?.status) throw error;
-    console.warn("Tag enrichment failed; continuing with existing tags.", error);
+    console.warn(
+      "Tag enrichment failed; continuing with existing tags.",
+      error,
+    );
     return { data: normalizedCV, tokenUsage: null };
   }
 }
@@ -3070,7 +3367,8 @@ OUTPUT (valid JSON only with ALL blocks included):`;
     if (!parsed.education) parsed.education = [];
     if (!parsed.experience) parsed.experience = [];
     if (!parsed.projects) parsed.projects = [];
-    if (!parsed.additional_qualifications) parsed.additional_qualifications = [];
+    if (!parsed.additional_qualifications)
+      parsed.additional_qualifications = [];
     if (!parsed.skills)
       parsed.skills = {
         languages: [],
@@ -3363,10 +3661,7 @@ export async function tailorCVForJob(
     sourceCV.projects?.length || 0,
     TARGET_PROJECT_ENTRIES,
   );
-  const targetQualifications = Math.min(
-    qualificationEntries.length,
-    3,
-  );
+  const targetQualifications = Math.min(qualificationEntries.length, 3);
   const targetCounts = {
     targetExperience,
     targetProjects,
@@ -3578,7 +3873,9 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
       issues.push(...getEntryBulletLimitIssues(parsed));
       issues.push(...getEntryMultilineBulletIssues(parsed));
       issues.push(...getFeaturedEntryIssues(parsed));
-      issues.push(...getBulletQualityIssues(parsed, sourceCV, selectionPlan.jobProfile));
+      issues.push(
+        ...getBulletQualityIssues(parsed, sourceCV, selectionPlan.jobProfile),
+      );
 
       // 2. Check page fit
       const pageEstimate = estimatePageUsage(parsed);
@@ -3665,7 +3962,11 @@ ${jdQuality !== "bad" ? "ats_keywords MUST be an empty array []." : "ats_keyword
 
     parsed = reconcileTailoredCVWithMaster(parsed, sourceCV);
     parsed = enforceDeterministicSelectionPlan(parsed, sourceCV, selectionPlan);
-    parsed = enforceEntryBulletMinimum(parsed, sourceCV, selectionPlan.jobProfile);
+    parsed = enforceEntryBulletMinimum(
+      parsed,
+      sourceCV,
+      selectionPlan.jobProfile,
+    );
     parsed = enforceEntryBulletLimit(parsed);
     parsed = enforceEntryMultilineBulletLimit(parsed, selectionPlan.jobProfile);
     parsed = compactResumeToTarget(parsed, sourceCV, jobDescription, position);
