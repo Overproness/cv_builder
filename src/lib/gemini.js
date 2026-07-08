@@ -9,6 +9,9 @@ import {
 const PRIMARY_MODEL = "gemini-3.1-flash-lite";
 const FALLBACK_MODELS = ["gemini-2.5-flash-lite"];
 const ALL_MODELS = [PRIMARY_MODEL, ...FALLBACK_MODELS];
+const DEFAULT_GEMINI_REQUEST_TIMEOUT_MS = Number(
+  process.env.GEMINI_REQUEST_TIMEOUT_MS || 60_000,
+);
 
 // Pricing per 1M tokens (Gemini 2.0 Flash)
 const PRICING = {
@@ -200,6 +203,16 @@ function isServiceUnavailable(error) {
     (error?.message || "").includes("503") ||
     (error?.message || "").includes("Service Unavailable") ||
     (error?.message || "").includes("high demand")
+  );
+}
+
+function isTimeoutError(error) {
+  const message = error?.message || "";
+  return (
+    error?.name === "AbortError" ||
+    error?.name === "GoogleGenerativeAIAbortError" ||
+    message.includes("timed out") ||
+    message.includes("aborted")
   );
 }
 
@@ -2554,7 +2567,10 @@ function addSupplementalEntriesToTargetUsage(
  * exported function call the model index only advances — so all subsequent
  * calls (e.g. validation-loop retries) reuse the already-working fallback.
  */
-function createModelSelector(apiKeyOrProxy) {
+function createModelSelector(apiKeyOrProxy, options = {}) {
+  const timeoutMs =
+    Number(options.timeoutMs || DEFAULT_GEMINI_REQUEST_TIMEOUT_MS) || 60_000;
+
   if (!apiKeyOrProxy) {
     throw new Error(
       "Gemini API key is required. Please add your API key in Settings.",
@@ -2565,6 +2581,7 @@ function createModelSelector(apiKeyOrProxy) {
     return createProxyModelSelector(
       apiKeyOrProxy.proxyUrl,
       apiKeyOrProxy.proxySecret,
+      { timeoutMs },
     );
   }
   const genAI = new GoogleGenerativeAI(apiKeyOrProxy);
@@ -2576,7 +2593,7 @@ function createModelSelector(apiKeyOrProxy) {
         const model = genAI.getGenerativeModel({
           model: ALL_MODELS[modelIndex],
         });
-        return await model.generateContent(request);
+        return await model.generateContent(request, { timeout: timeoutMs });
       } catch (error) {
         if (isServiceUnavailable(error) && modelIndex < ALL_MODELS.length - 1) {
           console.warn(
@@ -2603,19 +2620,23 @@ function createModelSelector(apiKeyOrProxy) {
  *   Body: Gemini generateContent request payload
  *   Response: Gemini generateContent response JSON
  */
-function createProxyModelSelector(proxyUrl, proxySecret) {
+function createProxyModelSelector(proxyUrl, proxySecret, options = {}) {
   if (!proxyUrl || !proxySecret) {
     throw new Error(
       "Proxy URL and secret are required. Please configure your proxy in Settings.",
     );
   }
   let modelIndex = 0;
+  const timeoutMs =
+    Number(options.timeoutMs || DEFAULT_GEMINI_REQUEST_TIMEOUT_MS) || 60_000;
 
   return async function generate(request) {
     while (modelIndex < ALL_MODELS.length) {
       const model = ALL_MODELS[modelIndex];
       const url = `${proxyUrl.replace(/\/$/, "")}/v1beta/models/${model}:generateContent`;
       let res;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
         res = await fetch(url, {
           method: "POST",
@@ -2624,11 +2645,17 @@ function createProxyModelSelector(proxyUrl, proxySecret) {
             Authorization: `Bearer ${proxySecret}`,
           },
           body: JSON.stringify(request),
+          signal: controller.signal,
         });
       } catch (networkError) {
+        if (networkError?.name === "AbortError") {
+          throw new Error("Gemini request timed out. Please try again.");
+        }
         throw new Error(
           `Could not reach your proxy at ${proxyUrl}. Check the URL in Settings.`,
         );
+      } finally {
+        clearTimeout(timeout);
       }
       if (res.status === 503 && modelIndex < ALL_MODELS.length - 1) {
         console.warn(
@@ -3295,13 +3322,21 @@ export async function tailorCVForJob(
   jobDescription,
   apiKey,
   position = "",
+  options = {},
 ) {
-  const generate = createModelSelector(apiKey);
+  const {
+    useAIPreprocessing = true,
+    maxCorrectionRetries = MAX_RETRIES,
+    requestTimeoutMs,
+  } = options;
+  const generate = createModelSelector(apiKey, { timeoutMs: requestTimeoutMs });
   const allTokenUsages = [];
 
-  const tagEnrichment = await enrichMasterCVTags(generate, masterCV);
+  const tagEnrichment = useAIPreprocessing
+    ? await enrichMasterCVTags(generate, masterCV)
+    : { data: normalizeCVTags(masterCV), tokenUsage: null };
   const sourceCV = tagEnrichment.data;
-  allTokenUsages.push(tagEnrichment.tokenUsage);
+  if (tagEnrichment.tokenUsage) allTokenUsages.push(tagEnrichment.tokenUsage);
 
   // Assess JD quality to determine keyword strategy
   const jdQuality = assessJobDescriptionQuality(jobDescription, position);
@@ -3345,16 +3380,24 @@ export async function tailorCVForJob(
     position,
     targetCounts,
   );
-  const { selectionPlan, tokenUsage: relevanceTokenUsage } =
-    await buildHybridSelectionPlan(
-      generate,
-      sourceCV,
-      jobDescription,
-      position,
-      targetCounts,
-      fallbackSelectionPlan,
-    );
-  allTokenUsages.push(relevanceTokenUsage);
+  const { selectionPlan, tokenUsage: relevanceTokenUsage } = useAIPreprocessing
+    ? await buildHybridSelectionPlan(
+        generate,
+        sourceCV,
+        jobDescription,
+        position,
+        targetCounts,
+        fallbackSelectionPlan,
+      )
+    : {
+        selectionPlan: {
+          ...fallbackSelectionPlan,
+          relevanceRubric: null,
+          selectionStrategy: "deterministic-fast-path",
+        },
+        tokenUsage: null,
+      };
+  if (relevanceTokenUsage) allTokenUsages.push(relevanceTokenUsage);
   const selectionInstructions = formatDeterministicSelectionPlan(selectionPlan);
   const relevanceRubricInstructions = formatRelevanceRubric(
     selectionPlan.relevanceRubric,
@@ -3525,7 +3568,7 @@ OUTPUT (tailored 1-page resume as valid JSON):`;
     parsed = reconcileTailoredCVWithMaster(parsed, sourceCV);
 
     // ── Validation Loop ──────────────────────────────────────────────────
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    for (let attempt = 0; attempt < maxCorrectionRetries; attempt++) {
       const issues = [];
 
       // 1. Enforce source selection and per-entry bullet range
@@ -3638,6 +3681,11 @@ ${jdQuality !== "bad" ? "ats_keywords MUST be an empty array []." : "ats_keyword
   } catch (error) {
     console.error("Error tailoring CV with Gemini:", error);
     rethrowIfApiKeyError(error);
+    if (isTimeoutError(error)) {
+      throw new Error(
+        "Gemini took too long to generate the tailored resume. Please try again.",
+      );
+    }
     if (error?.status === 429) {
       throw new Error(
         "Rate limit exceeded. Please wait a moment and try again.",

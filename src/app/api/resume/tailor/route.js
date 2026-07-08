@@ -5,10 +5,13 @@ import { logServerError } from "@/lib/serverLogger";
 import { getUserApiKey, recordTokenUsage } from "@/lib/tokenUtils";
 import { NextResponse } from "next/server";
 
+export const maxDuration = 120;
+
 // POST - Generate tailored resume from Master CV + Job Description
 export async function POST(request) {
+  let userId;
   try {
-    let apiKey, userId;
+    let apiKey;
     try {
       ({ apiKey, userId } = await getUserApiKey());
     } catch (e) {
@@ -47,6 +50,13 @@ export async function POST(request) {
       jobDescription,
       apiKey,
       position || "",
+      {
+        // Keep the interactive route within serverless limits: one bounded
+        // generation call, with deterministic local ranking/post-processing.
+        useAIPreprocessing: false,
+        maxCorrectionRetries: 0,
+        requestTimeoutMs: 55_000,
+      },
     );
 
     // Record token usage
